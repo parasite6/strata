@@ -17,7 +17,10 @@ const SHADOW_ALPHA: f32 = 0.5;
 const MIN_TILE: f32 = 5.0;
 
 /// Dolphin's tile grid inside the folder body: one tile fills it, more share a 2×2 grid.
-pub(in crate::ui::thumbnail) fn tile_rects(body: graphene::Rect, count: usize) -> Vec<graphene::Rect> {
+pub(in crate::ui::thumbnail) fn tile_rects(
+    body: graphene::Rect,
+    count: usize,
+) -> Vec<graphene::Rect> {
     let (width, height) = (body.width(), body.height());
     let (top, bottom, side, gap) = (height * 0.3, height / 6.0, width / 13.0, 1.0);
     let area = graphene::Rect::new(
@@ -63,7 +66,16 @@ pub(in crate::ui::thumbnail) fn draw_folder_previews(
         if tile.width() < MIN_TILE || tile.height() < MIN_TILE {
             return;
         }
-        draw_tile(snapshot, texture, tile, TileStyle { stroke, frame, tilt: tilt(path.as_deref()) });
+        draw_tile(
+            snapshot,
+            texture,
+            tile,
+            TileStyle {
+                stroke,
+                frame,
+                tilt: tilt(path.as_deref()),
+            },
+        );
     }
 }
 
@@ -73,10 +85,19 @@ struct TileStyle {
     tilt: f32,
 }
 
-fn draw_tile(snapshot: &gtk::Snapshot, texture: &gdk::Texture, tile: graphene::Rect, style: TileStyle) {
+fn draw_tile(
+    snapshot: &gtk::Snapshot,
+    texture: &gdk::Texture,
+    tile: graphene::Rect,
+    style: TileStyle,
+) {
     let framed = is_opaque(texture);
     let border = if framed { style.stroke } else { 0.0 };
-    let (image_width, image_height) = fit(texture, tile.width() - 2.0 * border, tile.height() - 2.0 * border);
+    let (image_width, image_height) = fit(
+        texture,
+        tile.width() - 2.0 * border,
+        tile.height() - 2.0 * border,
+    );
     let (outer_width, outer_height) = (image_width + 2.0 * border, image_height + 2.0 * border);
     snapshot.save();
     snapshot.translate(&graphene::Point::new(
@@ -84,7 +105,12 @@ fn draw_tile(snapshot: &gtk::Snapshot, texture: &gdk::Texture, tile: graphene::R
         tile.y() + tile.height() / 2.0,
     ));
     snapshot.rotate(style.tilt);
-    let outer = graphene::Rect::new(-outer_width / 2.0, -outer_height / 2.0, outer_width, outer_height);
+    let outer = graphene::Rect::new(
+        -outer_width / 2.0,
+        -outer_height / 2.0,
+        outer_width,
+        outer_height,
+    );
     let corner = graphene::Size::new(border / 2.0, border / 2.0);
     let rounded = gsk::RoundedRect::new(outer, corner, corner, corner, corner);
     snapshot.append_outset_shadow(
@@ -102,14 +128,24 @@ fn draw_tile(snapshot: &gtk::Snapshot, texture: &gdk::Texture, tile: graphene::R
     }
     snapshot.append_texture(
         texture,
-        &graphene::Rect::new(-image_width / 2.0, -image_height / 2.0, image_width, image_height),
+        &graphene::Rect::new(
+            -image_width / 2.0,
+            -image_height / 2.0,
+            image_width,
+            image_height,
+        ),
     );
     snapshot.restore();
 }
 
 fn fit(texture: &gdk::Texture, width: f32, height: f32) -> (f32, f32) {
-    let (natural_width, natural_height) = (texture.width().max(1) as f32, texture.height().max(1) as f32);
-    let scale = (width / natural_width).min(height / natural_height).max(0.0);
+    let (natural_width, natural_height) = (
+        texture.width().max(1) as f32,
+        texture.height().max(1) as f32,
+    );
+    let scale = (width / natural_width)
+        .min(height / natural_height)
+        .max(0.0);
     (natural_width * scale, natural_height * scale)
 }
 

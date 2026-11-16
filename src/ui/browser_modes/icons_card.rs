@@ -64,6 +64,8 @@ impl IconsCard {
             look.thumbnail_size,
             look.thumbnail_size,
         );
+        let show_hidden = look.state.is_some_and(ViewState::shows_hidden);
+        thumbnail::bind_folder_previews(&self.icon, entry, show_hidden, look.thumbnail_size);
         if look.scrolling {
             self.dim(entry);
         } else {

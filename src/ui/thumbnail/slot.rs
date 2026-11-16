@@ -29,6 +29,8 @@ mod imp {
         pub hidden: Cell<bool>,
         pub base_opacity: Cell<f64>,
         pub(super) folder_previews: RefCell<Vec<super::ThumbnailSlot>>,
+        pub(super) folder_source: RefCell<Option<super::super::folder_preview::FolderSource>>,
+        pub(super) folder_generation: Cell<u64>,
     }
 
     #[glib::object_subclass]
@@ -240,6 +242,7 @@ impl ThumbnailSlot {
                     .downcast_ref::<ThumbnailSlot>()
                     .expect("thumbnail slot");
                 super::refresh_slot_thumbnail(slot);
+                super::folder_preview::refresh(slot);
             },
         );
         crate::ui::preferences::PreferenceManager::shared().bind_preference(
@@ -367,6 +370,27 @@ impl ThumbnailSlot {
         }
     }
 
+    pub(super) fn replace_folder_source(
+        &self,
+        source: Option<super::folder_preview::FolderSource>,
+    ) -> Option<super::folder_preview::FolderSource> {
+        self.imp().folder_source.replace(source)
+    }
+
+    pub(super) fn folder_source(&self) -> Option<super::folder_preview::FolderSource> {
+        self.imp().folder_source.borrow().clone()
+    }
+
+    pub(super) fn next_folder_generation(&self) -> u64 {
+        let generation = self.imp().folder_generation.get().wrapping_add(1);
+        self.imp().folder_generation.set(generation);
+        generation
+    }
+
+    pub(super) fn folder_generation(&self) -> u64 {
+        self.imp().folder_generation.get()
+    }
+
     pub(crate) fn folder_preview_children(&self) -> Vec<ThumbnailSlot> {
         self.imp().folder_previews.borrow().clone()
     }
@@ -378,7 +402,10 @@ impl ThumbnailSlot {
             .min((height - 1.0) / 2.0)
             .max(0.0);
         let scale = self.imp().fallback_scale.get();
-        let (body_width, body_height) = ((width - 2.0 * inset) * scale, (height - 2.0 * inset) * scale);
+        let (body_width, body_height) = (
+            (width - 2.0 * inset) * scale,
+            (height - 2.0 * inset) * scale,
+        );
         graphene::Rect::new(
             ((width - body_width) / 2.0) as f32,
             ((height - body_height) / 2.0) as f32,

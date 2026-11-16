@@ -24,6 +24,10 @@ fn mark_keyboard_cursor(column: &ColumnView, cursor: Option<u32>) {
 }
 
 impl ViewState {
+    pub(in crate::ui) fn shows_hidden(&self) -> bool {
+        self.browser.preferences().show_hidden
+    }
+
     /// Returns focus to the listing after an overlay closes: the cursor row, or the
     /// pane surface of an empty or loading directory.
     pub(in crate::ui) fn restore_listing_focus(&self) {

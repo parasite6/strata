@@ -53,7 +53,7 @@ fn folder_previews_replace_and_clear_children() {
             );
             folder.set_folder_previews(std::slice::from_ref(&c));
             assert!(a.parent().is_none() && b.parent().is_none());
-            assert_eq!(folder.folder_preview_children(), [c.clone()]);
+            assert_eq!(folder.folder_preview_children(), std::slice::from_ref(&c));
             folder.clear_folder_previews();
             assert!(folder.folder_preview_children().is_empty());
             assert!(c.parent().is_none());
