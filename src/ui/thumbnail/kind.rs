@@ -31,6 +31,23 @@ pub(super) fn heavy(kind: ThumbnailKind) -> bool {
     )
 }
 
+/// Pictures and videos, but not the audio covers that also render as `Video`.
+pub(super) fn is_folder_preview_kind(path: &Path) -> bool {
+    match thumbnail_kind(path) {
+        Some(ThumbnailKind::Image | ThumbnailKind::RawImage) => true,
+        Some(ThumbnailKind::Video) => path
+            .extension()
+            .and_then(|extension| extension.to_str())
+            .is_some_and(|extension| {
+                matches!(
+                    extension.to_ascii_lowercase().as_str(),
+                    "mp4" | "mkv" | "webm" | "mov" | "avi" | "m4v" | "mpeg" | "mpg" | "ogv"
+                )
+            }),
+        _ => false,
+    }
+}
+
 pub(super) fn thumbnail_kind(path: &Path) -> Option<ThumbnailKind> {
     if crate::sandbox::raw_metadata::is_raw(path) {
         return Some(ThumbnailKind::RawImage);

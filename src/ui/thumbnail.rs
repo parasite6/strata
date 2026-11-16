@@ -18,6 +18,7 @@ use crate::{
 mod background;
 mod cache;
 mod camera;
+mod folder_preview;
 mod icons;
 mod jobs;
 mod kind;
