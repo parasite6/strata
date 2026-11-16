@@ -240,6 +240,7 @@ fn deferred_scroll_restoration_yields_to_updates_wheel_scrollbar_and_query_reset
                     })
                     .expect("result icon")
                     .fallback_icon()
+                    .map(|icon| crate::assets::icon_theme::builtin(&icon).to_owned())
                     .expect("fallback icon")
             };
             let directory_path = items[0].path.clone();
