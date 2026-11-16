@@ -75,9 +75,11 @@ impl BrowserView {
             PreferenceManager::watch_network_folders,
             Self::set_watch_network_folders,
         );
+        let interactive = self.state.interactive;
+        // A chooser click selects; double-click accepts and Space still previews.
         self.bind_view_preference(
             manager,
-            PreferenceManager::single_click_previews,
+            move |manager| interactive && manager.single_click_previews(),
             Self::set_single_click_previews,
         );
         let primed = Cell::new(false);
@@ -91,7 +93,6 @@ impl BrowserView {
                 }
             },
         );
-        let interactive = self.state.interactive;
         self.bind_view_preference(
             manager,
             move |manager| interactive && manager.columns_mirror_selection(),
