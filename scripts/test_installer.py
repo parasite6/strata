@@ -128,7 +128,7 @@ class InstallerFixture:
         for name in (
             "bash", "uname", "getconf", "awk", "sort", "head", "install", "sed", "grep",
             "dirname", "mkdir", "cp", "rm", "tar", "gzip", "sha256sum", "mktemp", "sleep", "cat",
-            "tee", "stty", "date", "tail", "wc", "openssl", "timeout",
+            "tee", "stty", "date", "tail", "wc", "openssl", "timeout", "env", "nice", "nproc",
         ):
             (self.commands / name).symlink_to(shutil.which(name))
         distro = self.root / "os-release"

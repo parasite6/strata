@@ -1826,8 +1826,13 @@ stage_source_build() {
 
 build_from_source() {
   local staged=$1
+  local jobs cores
   command -v cargo >/dev/null 2>&1 || die "Required command not found: cargo"
-  TASK_OUTPUT=live run_task "$(text build)" cargo build --release --locked \
+  cores=$(nproc 2>/dev/null || printf 2)
+  jobs=${STRATA_BUILD_JOBS:-$(((cores + 1) / 2))}
+  # Low priority, half the cores, and thin LTO keep the desktop usable while it builds.
+  TASK_OUTPUT=live run_task "$(text build)" env CARGO_PROFILE_RELEASE_LTO=thin \
+    CARGO_PROFILE_RELEASE_CODEGEN_UNITS=16 nice -n 19 cargo build --release --locked --jobs "$jobs" \
     --manifest-path "$SOURCE_DIR/Cargo.toml" --target-dir "$SOURCE_DIR/target"
   run_task "$(text unpack)" stage_source_build "$SOURCE_DIR" "$staged"
 }
