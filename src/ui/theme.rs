@@ -317,6 +317,7 @@ impl ThemeManager {
         self.apply_selected();
         self.monitor_text_scaling();
         self.monitor_system_appearance();
+        self.monitor_system_icon_theme();
         portal_text_scale::follow_if_portals_disabled();
         self.monitor_omarchy(omarchy_directories, omarchy_theme);
         self.monitor_custom_themes(themes_directory().is_dir());
@@ -324,6 +325,21 @@ impl ThemeManager {
         self.user_provider.load_from_string(&read_user_stylesheet());
         self.monitor_user_stylesheet();
     }
+
+    fn monitor_system_icon_theme(self: &Rc<Self>) {
+        let Some(settings) = gtk::Settings::default() else {
+            return;
+        };
+        let weak = Rc::downgrade(self);
+        settings.connect_gtk_icon_theme_name_notify(move |_| {
+            if let Some(manager) = weak.upgrade()
+                && manager.preferences.icon_theme() == crate::assets::icon_theme::FOLLOW_SYSTEM
+            {
+                manager.apply_selected();
+            }
+        });
+    }
+
     pub fn themes(&self) -> Vec<Theme> {
         self.themes.borrow().clone()
     }
