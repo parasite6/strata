@@ -109,6 +109,7 @@ pub mod icons {
     pub const SETTINGS: &str = "strata-settings";
     pub const SETTINGS_2: &str = "strata-settings-2";
     pub const REFRESH: &str = "strata-refresh";
+    pub const REPEAT: &str = "strata-repeat";
     pub const SHREDDER: &str = "strata-shredder";
     pub const SLIDERS: &str = "strata-sliders-horizontal";
     pub const SMARTPHONE: &str = "strata-smartphone";

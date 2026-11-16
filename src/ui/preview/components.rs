@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 
-use gtk::prelude::*;
+use gtk::{glib, prelude::*};
+use std::rc::Rc;
 
 pub(super) const PADDING: i32 = 16;
 pub(super) const GAP: i32 = 12;
@@ -64,6 +65,70 @@ pub(super) fn navigation_button(
     }
     crate::ui::accessibility::set_label(&button, &crate::i18n::tr(name));
     button
+}
+
+/// Looping belongs to the shown stream alone, so every new stream starts with it off.
+pub(super) struct LoopToggle {
+    button: gtk::Button,
+    media: Rc<glib::WeakRef<gtk::MediaStream>>,
+}
+
+impl LoopToggle {
+    pub(super) fn new() -> Self {
+        let button = gtk::Button::new();
+        button.add_css_class("preview-media-button");
+        button.add_css_class("preview-media-loop");
+        button.set_child(Some(&crate::assets::primary_icon(
+            crate::assets::icons::REPEAT,
+            18,
+        )));
+        crate::ui::accessibility::set_tooltip_and_label(&button, &crate::i18n::tr("Loop"));
+        let media: Rc<glib::WeakRef<gtk::MediaStream>> = Rc::default();
+        let current = media.clone();
+        button.connect_clicked(move |button| {
+            if let Some(media) = current.upgrade() {
+                media.set_loop(!media.is_loop());
+                show_looping(button, media.is_loop());
+            }
+        });
+        let toggle = Self { button, media };
+        toggle.follow(None);
+        toggle
+    }
+
+    pub(super) fn button(&self) -> &gtk::Button {
+        &self.button
+    }
+
+    pub(super) fn follow(&self, media: Option<&gtk::MediaStream>) {
+        self.media.set(media);
+        self.button.set_sensitive(media.is_some());
+        show_looping(&self.button, media.is_some_and(|media| media.is_loop()));
+    }
+}
+
+fn show_looping(button: &gtk::Button, looping: bool) {
+    if looping {
+        button.add_css_class("active");
+    } else {
+        button.remove_css_class("active");
+    }
+    let pressed = if looping {
+        gtk::AccessibleTristate::True
+    } else {
+        gtk::AccessibleTristate::False
+    };
+    button.update_state(&[gtk::accessible::State::Pressed(pressed)]);
+}
+
+/// Shows `total` with the loop toggle beside it, at the end of a transport row.
+pub(super) fn transport_end(total: &gtk::Label, looping: &LoopToggle) -> gtk::Box {
+    let end = gtk::Box::new(gtk::Orientation::Horizontal, 8);
+    end.set_valign(gtk::Align::Center);
+    total.set_hexpand(true);
+    end.append(total);
+    end.append(looping.button());
+    end
 }
 
 pub(super) fn navigation_row(

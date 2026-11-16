@@ -23,7 +23,9 @@ use crate::{
 
 use super::{
     ListingPosition,
-    components::{DetailsHeader, label, navigation_button, navigation_row},
+    components::{
+        DetailsHeader, LoopToggle, label, navigation_button, navigation_row, transport_end,
+    },
     ease_in::EaseIn,
 };
 
@@ -79,6 +81,7 @@ pub(super) struct AudioView {
     error: gtk::Box,
     previous: gtk::Button,
     next: gtk::Button,
+    looping: LoopToggle,
     media: RefCell<Option<gtk::MediaStream>>,
     handlers: RefCell<Vec<glib::SignalHandlerId>>,
     hover: Cell<Option<i64>>,
@@ -147,7 +150,8 @@ impl AudioView {
         crate::ui::accessibility::set_label(&play, &crate::i18n::tr("Play or pause"));
         let transport = navigation_row(&previous, &play, &next, 10);
         transport.set_start_widget(Some(&elapsed));
-        transport.set_end_widget(Some(&total));
+        let looping = LoopToggle::new();
+        transport.set_end_widget(Some(&transport_end(&total, &looping)));
 
         let artwork = artwork::Artwork::new();
         let spectrum = spectrum::Spectrum::new();
@@ -174,6 +178,7 @@ impl AudioView {
             error,
             previous,
             next,
+            looping,
             media: RefCell::default(),
             handlers: RefCell::default(),
             hover: Cell::default(),
@@ -241,6 +246,7 @@ impl AudioView {
                 media.disconnect(handler);
             }
         }
+        self.looping.follow(None);
         self.details.borrow_mut().take();
         self.peaks.borrow_mut().take();
         self.ease.stop();
@@ -315,6 +321,7 @@ impl AudioView {
         );
         self.handlers.replace(handlers);
         self.media.replace(Some(media.clone()));
+        self.looping.follow(Some(&media));
         self.spectrum
             .set_media(media.downcast_ref::<DecodedMedia>());
         self.scrubber.set_media(Some(&media));

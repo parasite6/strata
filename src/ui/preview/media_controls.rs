@@ -76,6 +76,9 @@ impl PreviewState {
             controls.section.append(&bar);
             return;
         }
+        let looping = super::components::LoopToggle::new();
+        looping.follow(Some(media));
+        bar.append(looping.button());
 
         let time_label = gtk::Label::new(Some("0:00 / 0:00"));
         time_label.add_css_class("preview-media-time");

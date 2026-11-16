@@ -157,3 +157,63 @@ fn unclassified_media_seek_slider_steps_seek_the_stream_immediately() {
         },
     );
 }
+
+#[test]
+fn loop_toggle_repeats_only_the_shown_stream_until_it_is_replaced() {
+    crate::test_support::gtk_test(
+        "ui::preview::tests::media_controls::loop_toggle_repeats_only_the_shown_stream_until_it_is_replaced",
+        || {
+            crate::ui::media::use_test_streams(true);
+            crate::ui::preferences::PreferenceManager::shared().set_preview_autoplay(false);
+            let mut mismatches = Vec::new();
+            for (first, second, content_type) in [
+                ("one.mp3", "two.mp3", "audio/mpeg"),
+                ("one.mp4", "two.mp4", "video/mp4"),
+                ("one.mid", "two.mid", "audio/midi"),
+            ] {
+                let provider = Rc::new(Provider::default());
+                let drawer = PreviewDrawer::new(provider.clone(), false);
+                let looping = |drawer: &PreviewDrawer| {
+                    let button =
+                        with_class(drawer.state.content.upcast_ref(), "preview-media-loop")
+                            .and_downcast::<gtk::Button>()
+                            .expect("loop toggle");
+                    let media = drawer.state.media.borrow().clone().expect("media stream");
+                    (button, media)
+                };
+                let state = |button: &gtk::Button, media: &gtk::MediaStream| {
+                    (media.is_loop(), button.has_css_class("active"))
+                };
+
+                drawer.show(entry(first), None);
+                super::video::ready(&provider, 0, content_type);
+                let (button, media) = looping(&drawer);
+                let initial = state(&button, &media);
+                button.emit_clicked();
+                let toggled = state(&button, &media);
+                drawer.show(entry(second), None);
+                super::video::ready(&provider, 1, content_type);
+                let (button, next) = looping(&drawer);
+                let replaced = (state(&button, &next), media.is_loop());
+                button.emit_clicked();
+                button.emit_clicked();
+                let toggled_back = state(&button, &next);
+                drawer.close();
+
+                if initial != (false, false)
+                    || toggled != (true, true)
+                    || replaced != ((false, false), true)
+                    || toggled_back != (false, false)
+                {
+                    mismatches.push(format!(
+                        "{content_type}: initial={initial:?} toggled={toggled:?} \
+                         replaced=(next, previous still looping)={replaced:?} \
+                         toggled back={toggled_back:?}"
+                    ));
+                }
+            }
+            crate::ui::media::use_test_streams(false);
+            assert!(mismatches.is_empty(), "{}", mismatches.join("\n"));
+        },
+    );
+}
