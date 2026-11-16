@@ -56,7 +56,12 @@ impl SidebarState {
         self.widget.append(row);
     }
 
-    pub(super) fn append_place(&self, icon: &str, name: &str, location: Location) -> gtk::Button {
+    pub(super) fn append_place(
+        &self,
+        icon: &'static str,
+        name: &str,
+        location: Location,
+    ) -> gtk::Button {
         let row = self.append_device_place(icon, name, location.clone(), None);
         customize_sidebar_folder_icon(&row, &location, icon);
         row
@@ -175,13 +180,18 @@ pub(super) fn sidebar_button(icon: &str, name: &str) -> gtk::Button {
     row
 }
 
-pub(super) fn customize_sidebar_folder_icon(row: &gtk::Button, location: &Location, icon: &str) {
+pub(super) fn customize_sidebar_folder_icon(
+    row: &gtk::Button,
+    location: &Location,
+    icon: &'static str,
+) {
     if let Some(path) = location.native_path()
         && let Some(image) = row
             .child()
             .and_then(|content| content.first_child())
             .and_downcast::<gtk::Image>()
     {
+        let icon = crate::assets::icon_theme::folder_icon(icon, Some(path));
         crate::ui::thumbnail::show_customized_folder_image(&image, path, icon);
     }
 }

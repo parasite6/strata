@@ -11,6 +11,7 @@ use std::{
 
 use gtk::{gdk, gio, glib, prelude::*};
 
+pub mod icon_theme;
 mod vector;
 
 pub mod icons {
@@ -148,11 +149,18 @@ pub mod icons {
             .then_some(emoji)
     }
 
+    /// A user-chosen PNG or SVG stored as `image:/absolute/path`.
+    pub fn custom_image(name: &str) -> Option<&std::path::Path> {
+        let path = std::path::Path::new(name.strip_prefix("image:")?);
+        super::icon_theme::is_supported_image(path).then_some(path)
+    }
+
     pub fn is_customization_choice(name: &str) -> bool {
         CUSTOMIZATION_CHOICES
             .iter()
             .any(|(icon_name, _)| *icon_name == name)
             || custom_emoji(name).is_some()
+            || custom_image(name).is_some()
     }
 }
 
@@ -463,6 +471,22 @@ pub fn emoji_icon_paintable(emoji: &str) -> Option<gdk::Texture> {
     emoji_texture(emoji)
 }
 
+pub fn custom_image_paintable(
+    path: &Path,
+    logical_px: i32,
+    scale_factor: i32,
+) -> Option<gdk::Texture> {
+    icon_theme::file_texture(path, logical_px.saturating_mul(scale_factor.max(1)))
+}
+
+pub fn set_custom_image_icon(image: &gtk::Image, path: &Path, fallback: &str) {
+    remove_primary_icon(image);
+    match custom_image_paintable(path, image.pixel_size().max(16), image.scale_factor()) {
+        Some(texture) => image.set_paintable(Some(&texture)),
+        None => set_primary_icon(image, fallback),
+    }
+}
+
 pub fn primary_icon_color() -> String {
     PRIMARY_ICON_COLOR.with(|color| color.borrow().clone())
 }
@@ -528,7 +552,7 @@ fn apply_primary_icon(image: &gtk::Image, name: &str, color: &str) {
     ) {
         image.set_paintable(Some(&texture));
     } else {
-        image.set_icon_name(Some(name));
+        image.set_icon_name(Some(icon_theme::builtin(name)));
     }
 }
 
@@ -566,6 +590,12 @@ fn primary_icon_texture_at(
     logical_px: i32,
     context: IconContext,
 ) -> Option<gdk::Texture> {
+    if let Some(texture) =
+        icon_theme::themed_file(name).and_then(|file| icon_theme::file_texture(&file, texture_px))
+    {
+        return Some(texture);
+    }
+    let name = icon_theme::builtin(name);
     if name.starts_with(CATPPUCCIN_ICON_PREFIX) {
         return catppuccin_icon_texture_at(name, color, texture_px, logical_px, context);
     }

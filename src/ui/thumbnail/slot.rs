@@ -214,6 +214,17 @@ impl ThumbnailSlot {
                 super::refresh_slot_thumbnail(slot);
             },
         );
+        crate::ui::preferences::PreferenceManager::shared().bind_preference(
+            &widget,
+            crate::ui::preferences::PreferenceManager::icon_theme,
+            |widget, theme| {
+                crate::assets::icon_theme::select(&theme);
+                let slot = widget
+                    .downcast_ref::<ThumbnailSlot>()
+                    .expect("thumbnail slot");
+                super::refresh_slot_icon(slot);
+            },
+        );
         widget
     }
 
@@ -319,7 +330,7 @@ impl ThumbnailSlot {
             crate::assets::icons::FOLDER,
             crate::assets::icons::FOLDER_LOCK,
         ]
-        .contains(&icon);
+        .contains(&crate::assets::icon_theme::builtin(icon));
         let scale = if self.imp().limit_fallback_height.get() && !folder {
             texture.map_or(1.0, cached_folder_height_scale)
         } else {

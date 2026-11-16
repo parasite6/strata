@@ -126,6 +126,18 @@ impl PreferenceManager {
         self.save_preferences();
     }
 
+    pub fn icon_theme(&self) -> String {
+        self.preferences.borrow().icon_theme.clone()
+    }
+
+    pub fn set_icon_theme(&self, theme: &str) {
+        if self.icon_theme() == theme {
+            return;
+        }
+        self.preferences.borrow_mut().icon_theme = theme.to_owned();
+        self.save_preferences();
+    }
+
     pub fn reduce_motion(&self) -> bool {
         self.preferences.borrow().reduce_motion
     }

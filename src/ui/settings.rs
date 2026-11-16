@@ -23,6 +23,7 @@ mod compact_bin;
 mod diagnostics;
 mod exclusions;
 mod general;
+mod icon_theme;
 pub(crate) use general::abbreviate_home;
 mod install;
 mod install_command;

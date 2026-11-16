@@ -234,7 +234,7 @@ impl SidebarState {
     pub(super) fn append_reorderable_place(
         self: &Rc<Self>,
         id: &'static str,
-        icon: &str,
+        icon: &'static str,
         name: &str,
         location: Location,
     ) -> gtk::Button {

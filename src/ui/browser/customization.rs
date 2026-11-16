@@ -181,7 +181,7 @@ fn append_color_section(
     let color_section = build_section("COLOR");
     let color_item = item.clone();
     let bar_item = ColorBarItem {
-        preview_icon: item.fallback_icon,
+        preview_icon: crate::assets::icon_theme::builtin(item.fallback_icon),
         label: if is_directory { "folder" } else { "file" },
     };
     let color_bar = build_folder_color_bar(initial_color, bar_item, move |selected_color| {
@@ -204,6 +204,7 @@ fn append_icon_section(
     picker.connect_icon_chosen(item);
     section.append(&picker.grid);
     section.append(&picker.choices.emoji_button);
+    section.append(&picker.choices.image_button);
     body.append(&section);
     picker
 }

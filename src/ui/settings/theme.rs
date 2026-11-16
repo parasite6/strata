@@ -348,6 +348,7 @@ fn append_follow_omarchy_option(content: &gtk::Box, themes: &Rc<ThemeManager>) -
 
 fn append_file_icon_colors_option(content: &gtk::Box, preferences: &Rc<PreferenceManager>) {
     let group = super::settings_group(content, "FILE ICONS");
+    super::icon_theme::append_icon_theme_option(&group, preferences);
     let choice = super::bindings::choice_menu(
         preferences,
         "File icon colors",
@@ -358,6 +359,14 @@ fn append_file_icon_colors_option(content: &gtk::Box, preferences: &Rc<Preferenc
         PreferenceManager::file_icon_colors,
         PreferenceManager::set_file_icon_colors,
     );
+    preferences.bind_preference(&choice, PreferenceManager::icon_theme, |widget, theme| {
+        if let Some(button) = widget.downcast_ref::<gtk::MenuButton>() {
+            super::bindings::set_choice_sensitive(
+                button,
+                theme == crate::assets::icon_theme::BUILT_IN,
+            );
+        }
+    });
     group.append(&super::control_row(
         "File icon colors",
         "Brand colors use each file type's own palette; theme colors use the accent.",

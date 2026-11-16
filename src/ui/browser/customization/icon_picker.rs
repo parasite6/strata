@@ -2,7 +2,7 @@
 
 use super::CustomizedItem;
 use crate::ui::preferences::PreferenceManager;
-use gtk::prelude::*;
+use gtk::{gio, prelude::*};
 use std::rc::Rc;
 
 /// The bundled icon grid plus the emoji picker of the Customize dialog.
@@ -17,6 +17,7 @@ pub(super) struct IconPicker {
 pub(super) struct IconChoices {
     buttons: Rc<Vec<(&'static str, gtk::Button)>>,
     pub(super) emoji_button: gtk::Button,
+    pub(super) image_button: gtk::Button,
 }
 
 impl IconPicker {
@@ -30,11 +31,13 @@ impl IconPicker {
         emoji_chooser.set_parent(&emoji_button);
         let chooser_for_button = emoji_chooser.clone();
         emoji_button.connect_clicked(move |_| chooser_for_button.popup());
+        let image_button = build_image_button(initial_icon);
         Self {
             grid,
             choices: IconChoices {
                 buttons,
                 emoji_button,
+                image_button,
             },
             emoji_chooser,
         }
@@ -52,6 +55,12 @@ impl IconPicker {
             });
         }
 
+        let image_choices = self.choices.clone();
+        let image_item = item.clone();
+        self.choices
+            .image_button
+            .connect_clicked(move |button| choose_image(button, &image_choices, &image_item));
+
         let choices = self.choices.clone();
         let item = item.clone();
         self.emoji_chooser
@@ -68,9 +77,45 @@ impl IconPicker {
     }
 }
 
+fn choose_image(button: &gtk::Button, choices: &IconChoices, item: &Rc<CustomizedItem>) {
+    let filter = gtk::FileFilter::new();
+    filter.set_name(Some(&crate::i18n::tr("PNG and SVG images")));
+    for pattern in ["*.png", "*.PNG", "*.svg", "*.SVG"] {
+        filter.add_pattern(pattern);
+    }
+    let filters = gio::ListStore::new::<gtk::FileFilter>();
+    filters.append(&filter);
+    let dialog = gtk::FileDialog::builder()
+        .title(crate::i18n::tr("Choose an icon image"))
+        .modal(true)
+        .filters(&filters)
+        .default_filter(&filter)
+        .build();
+    let window = button.root().and_downcast::<gtk::Window>();
+    let choices = choices.clone();
+    let item = item.clone();
+    dialog.open(window.as_ref(), gio::Cancellable::NONE, move |result| {
+        let Some(path) = result.ok().and_then(|file| file.path()) else {
+            return;
+        };
+        let preference = format!("image:{}", path.display());
+        if crate::assets::icons::custom_image(&preference).is_none() {
+            return;
+        }
+        choices.mark_buttons_active(None);
+        choices
+            .emoji_button
+            .set_label(&crate::i18n::tr("Choose Emoji…"));
+        choices.image_button.add_css_class("active");
+        PreferenceManager::shared().set_custom_icon(&item.path, Some(&preference));
+        item.note_customized();
+    });
+}
+
 impl IconChoices {
     pub(super) fn show_icon_active(&self, selected_name: Option<&'static str>) {
         self.mark_buttons_active(selected_name);
+        self.image_button.remove_css_class("active");
         self.emoji_button
             .set_label(&crate::i18n::tr("Choose Emoji…"));
     }
@@ -118,6 +163,22 @@ fn build_icon_buttons(
             (icon_name, button)
         })
         .collect()
+}
+
+fn build_image_button(initial_icon: Option<&str>) -> gtk::Button {
+    let button = gtk::Button::with_label(&crate::i18n::tr("Choose Image…"));
+    button.add_css_class("customize-emoji-button");
+    if initial_icon
+        .and_then(crate::assets::icons::custom_image)
+        .is_some()
+    {
+        button.add_css_class("active");
+    }
+    crate::ui::accessibility::set_description(
+        &button,
+        Some(&crate::i18n::tr("Use a PNG or SVG image for this item")),
+    );
+    button
 }
 
 fn build_emoji_button(selected_emoji: Option<&str>) -> gtk::Button {

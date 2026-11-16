@@ -33,6 +33,7 @@ pub(in crate::ui) fn non_default_preferences() -> Preferences {
         reduce_motion: true,
         element_glow: false,
         file_icon_colors: FileIconColors::Theme,
+        icon_theme: "Papirus".into(),
         browser_mode: "list".into(),
         browser_density: "airy".into(),
         browser_density_custom_px: 11,
