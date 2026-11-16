@@ -6,6 +6,9 @@ use std::path::{Path, PathBuf};
 
 use super::kind::is_folder_preview_kind;
 
+mod draw;
+pub(super) use draw::{draw_folder_previews, tile_rects};
+
 pub(super) const MAX_PREVIEW_TILES: usize = 4;
 const MAX_SCANNED_ENTRIES: usize = 500;
 

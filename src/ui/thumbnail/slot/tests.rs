@@ -32,3 +32,31 @@ fn resizing_refreshes_fallbacks_without_discarding_decoded_thumbnails() {
         },
     );
 }
+
+#[test]
+fn folder_previews_replace_and_clear_children() {
+    crate::test_support::gtk_test(
+        "ui::thumbnail::slot::tests::folder_previews_replace_and_clear_children",
+        || {
+            let folder = ThumbnailSlot::new(64);
+            let (a, b, c) = (
+                ThumbnailSlot::new(32),
+                ThumbnailSlot::new(32),
+                ThumbnailSlot::new(32),
+            );
+            folder.set_folder_previews(&[a.clone(), b.clone()]);
+            assert_eq!(folder.folder_preview_children(), [a.clone(), b.clone()]);
+            assert!(
+                [&a, &b]
+                    .iter()
+                    .all(|child| child.parent().as_ref() == Some(folder.upcast_ref()))
+            );
+            folder.set_folder_previews(std::slice::from_ref(&c));
+            assert!(a.parent().is_none() && b.parent().is_none());
+            assert_eq!(folder.folder_preview_children(), [c.clone()]);
+            folder.clear_folder_previews();
+            assert!(folder.folder_preview_children().is_empty());
+            assert!(c.parent().is_none());
+        },
+    );
+}

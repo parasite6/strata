@@ -28,6 +28,7 @@ mod imp {
         pub(crate) mark: Cell<crate::ui::browser::ClipboardMark>,
         pub hidden: Cell<bool>,
         pub base_opacity: Cell<f64>,
+        pub(super) folder_previews: RefCell<Vec<super::ThumbnailSlot>>,
     }
 
     #[glib::object_subclass]
@@ -43,6 +44,9 @@ mod imp {
 
     impl ObjectImpl for ThumbnailSlot {
         fn dispose(&self) {
+            for child in self.folder_previews.take() {
+                child.unparent();
+            }
             super::super::forget_slot(self.obj().as_ptr() as usize);
             crate::ui::file_providers::forget(self.obj().as_ptr() as usize);
         }
@@ -56,6 +60,23 @@ mod imp {
         fn measure(&self, _orientation: gtk::Orientation, _for_size: i32) -> (i32, i32, i32, i32) {
             let size = self.slot.get().max(1);
             (size, size, -1, -1)
+        }
+
+        fn size_allocate(&self, width: i32, height: i32, _baseline: i32) {
+            let body = self.obj().folder_body(f64::from(width), f64::from(height));
+            let children = self.folder_previews.borrow();
+            let tiles = super::super::folder_preview::tile_rects(body, children.len());
+            for (child, tile) in children.iter().zip(tiles) {
+                child.size_allocate(
+                    &gtk::Allocation::new(
+                        tile.x() as i32,
+                        tile.y() as i32,
+                        (tile.width() as i32).max(1),
+                        (tile.height() as i32).max(1),
+                    ),
+                    -1,
+                );
+            }
         }
 
         fn snapshot(&self, snapshot: &gtk::Snapshot) {
@@ -108,6 +129,13 @@ mod imp {
             ));
             snapshot_texture(snapshot, &texture, draw_width, draw_height);
             snapshot.restore();
+            if !marked && self.texture.borrow().is_none() {
+                super::super::folder_preview::draw_folder_previews(
+                    snapshot,
+                    &obj,
+                    obj.folder_body(width, height),
+                );
+            }
             if let Some(badge) = self.decoration.borrow().as_ref() {
                 let size = (width.min(height) * 0.55).clamp(10.0, 24.0) as f32;
                 snapshot.append_texture(
@@ -316,6 +344,47 @@ impl ThumbnailSlot {
         self.imp().texture.replace(Some(texture.clone()));
         self.update_state_opacity();
         self.queue_draw();
+        if let Some(folder) = self.parent().and_downcast::<ThumbnailSlot>() {
+            folder.queue_draw();
+        }
+    }
+
+    pub(crate) fn set_folder_previews(&self, children: &[ThumbnailSlot]) {
+        for old in self.imp().folder_previews.take() {
+            old.unparent();
+        }
+        for child in children {
+            child.set_parent(self);
+        }
+        self.imp().folder_previews.replace(children.to_vec());
+        self.queue_allocate();
+        self.queue_draw();
+    }
+
+    pub(crate) fn clear_folder_previews(&self) {
+        if !self.imp().folder_previews.borrow().is_empty() {
+            self.set_folder_previews(&[]);
+        }
+    }
+
+    pub(crate) fn folder_preview_children(&self) -> Vec<ThumbnailSlot> {
+        self.imp().folder_previews.borrow().clone()
+    }
+
+    /// Where the fallback icon is drawn, which is the folder shape for a folder.
+    fn folder_body(&self, width: f64, height: f64) -> graphene::Rect {
+        let inset = f64::from(self.imp().content_inset.get())
+            .min((width - 1.0) / 2.0)
+            .min((height - 1.0) / 2.0)
+            .max(0.0);
+        let scale = self.imp().fallback_scale.get();
+        let (body_width, body_height) = ((width - 2.0 * inset) * scale, (height - 2.0 * inset) * scale);
+        graphene::Rect::new(
+            ((width - body_width) / 2.0) as f32,
+            ((height - body_height) / 2.0) as f32,
+            body_width as f32,
+            body_height as f32,
+        )
     }
 
     pub(crate) fn set_fallback(&self, icon: &str, texture: Option<&gdk::Texture>) {
