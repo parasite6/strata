@@ -648,6 +648,36 @@ class InstallerTests(unittest.TestCase):
                 ],
             )
 
+    def test_checkout_beside_installer_is_built_and_installed_without_downloads(self) -> None:
+        with InstallerFixture() as fixture:
+            (fixture.root / "Cargo.toml").write_text('[package]\nversion = "9.9.9"\n', encoding="utf-8")
+            data = fixture.root / "data"
+            for name, content in {
+                "io.github.lgse.Strata.desktop": (ROOT / "data/io.github.lgse.Strata.desktop").read_text(encoding="utf-8"),
+                "io.github.lgse.Strata.FileManager1.service": (ROOT / "data/io.github.lgse.Strata.FileManager1.service").read_text(encoding="utf-8"),
+                "icons/scalable/apps/io.github.lgse.Strata.svg": "<svg/>\n",
+                "portal/strata.portal": "[portal]\n",
+                "udiskie/unlock": "supported\n",
+            }.items():
+                (data / name).parent.mkdir(parents=True, exist_ok=True)
+                (data / name).write_text(content, encoding="utf-8")
+            fixture.command("cargo", '''printf "cargo %s\\n" "$*" >> "$CALLS"
+while (($#)); do
+  case $1 in --target-dir) target=$2; shift 2 ;; *) shift ;; esac
+done
+mkdir -p "$target/release"
+printf '#!/bin/bash\\nprintf "built %s\\\\n" "$*" >> "$CALLS"\\n' > "$target/release/strata"
+''')
+            result = fixture.run("--non-interactive")
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            calls = fixture.recorded_calls()
+            self.assertFalse(any(call.startswith("curl") for call in calls), calls)
+            self.assertTrue(any(call.startswith("cargo build --release --locked") for call in calls), calls)
+            binary = fixture.home / ".local/bin/strata"
+            self.assertIn("built", binary.read_text(encoding="utf-8"))
+            self.assertTrue((fixture.home / "data/applications/io.github.lgse.Strata.desktop").is_file())
+            self.assertIn("9.9.9", result.stdout)
+
     def test_custom_setup_starts_with_everything_selected_and_applies_deselections(self) -> None:
         with InstallerFixture() as fixture:
             terminal = fixture.terminal()

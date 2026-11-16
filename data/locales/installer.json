@@ -765,6 +765,36 @@
     "zh-CN": "解压已验证的发行版",
     "zh-TW": "解壓縮已驗證的發行版本"
   },
+  "installer.fetch_source": {
+    "en": "Downloading source from %{repository}",
+    "hu": "Forráskód letöltése innen: %{repository}",
+    "fr": "Téléchargement des sources depuis %{repository}",
+    "de": "Quellcode von %{repository} wird heruntergeladen",
+    "es": "Descargando el código fuente de %{repository}",
+    "ja": "%{repository} からソースをダウンロード中",
+    "pt-BR": "Baixando o código-fonte de %{repository}",
+    "ko": "%{repository}에서 소스를 내려받는 중",
+    "vi": "Đang tải mã nguồn từ %{repository}",
+    "it": "Download del codice sorgente da %{repository}",
+    "ru": "Загрузка исходного кода из %{repository}",
+    "zh-CN": "正在从 %{repository} 下载源代码",
+    "zh-TW": "正在從 %{repository} 下載原始碼"
+  },
+  "installer.build": {
+    "en": "Building Strata from source",
+    "hu": "A Strata fordítása forráskódból",
+    "fr": "Compilation de Strata depuis les sources",
+    "de": "Strata wird aus dem Quellcode gebaut",
+    "es": "Compilando Strata desde el código fuente",
+    "ja": "ソースから Strata をビルド中",
+    "pt-BR": "Compilando o Strata a partir do código-fonte",
+    "ko": "소스에서 Strata 빌드 중",
+    "vi": "Đang biên dịch Strata từ mã nguồn",
+    "it": "Compilazione di Strata dal codice sorgente",
+    "ru": "Сборка Strata из исходного кода",
+    "zh-CN": "正在从源代码构建 Strata",
+    "zh-TW": "正在從原始碼建置 Strata"
+  },
   "installer.application": {
     "en": "Install the application",
     "hu": "Az alkalmazás telepítése",
