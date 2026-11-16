@@ -278,6 +278,8 @@ pub(in crate::ui) struct Preferences {
     show_thumbnails: bool,
     #[serde(default)]
     stl_thumbnails: bool,
+    #[serde(default = "default_enabled")]
+    folder_previews: bool,
     #[serde(default = "default_icons_thumbnail_size")]
     icons_thumbnail_size: i32,
     #[serde(default, skip_serializing_if = "Option::is_none")]

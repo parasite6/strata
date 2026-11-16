@@ -184,6 +184,65 @@ fn stl_thumbnails_saved_and_live_preferences_apply_across_windows_and_views() {
     thumbnail_preferences_across_windows("model.stl", true);
 }
 
+#[test]
+fn folder_previews_saved_and_live_preferences_apply_across_windows() {
+    gtk_test(
+        "ui::window::tests::preferences::browsing_prefs::folder_previews_saved_and_live_preferences_apply_across_windows",
+        || {
+            use crate::ui::thumbnail::ThumbnailSlot;
+
+            write_settings("folder_previews = false\nbrowser_mode = 'icons'\n");
+            let directory = tempfile::tempdir().expect("parent folder");
+            let folder = directory.path().join("pictures");
+            std::fs::create_dir(&folder).expect("picture folder");
+            for name in ["a.png", "b.png"] {
+                std::fs::write(folder.join(name), b"x").expect("picture fixture");
+            }
+            let manager = PreferenceManager::shared();
+            let windows = [OpenWindow::open(), OpenWindow::open()];
+            for open in &windows {
+                open.content
+                    .browser
+                    .navigate_location(crate::model::Location::local(directory.path()));
+                loaded_entry(open, &folder);
+            }
+            let preview_counts = || {
+                windows
+                    .iter()
+                    .map(|open| {
+                        let mut counts = Vec::new();
+                        walk(&open.content.browser.widget(), &mut |widget| {
+                            if widget.is_mapped()
+                                && let Some(slot) = widget.downcast_ref::<ThumbnailSlot>()
+                                && slot.provider_path().as_deref() == folder.to_str()
+                            {
+                                counts.push(slot.folder_preview_children().len());
+                            }
+                        });
+                        counts
+                    })
+                    .collect::<Vec<_>>()
+            };
+            let shown = |expected: usize| {
+                preview_counts()
+                    .iter()
+                    .all(|counts| !counts.is_empty() && counts.iter().all(|&n| n == expected))
+            };
+            wait_until(|| shown(0));
+            manager.set_folder_previews(true);
+            wait_until(|| shown(2));
+            manager.set_folder_previews(false);
+            wait_until(|| shown(0));
+            crate::storage::writer::settle();
+            let saved = std::fs::read_to_string(settings_file()).expect("saved settings");
+            assert!(saved.contains("folder_previews = false"));
+            for open in windows {
+                open.window.close();
+            }
+        },
+    );
+}
+
 fn thumbnail_preferences_across_windows(name: &str, model: bool) {
     let test = if model {
         "ui::window::tests::preferences::browsing_prefs::stl_thumbnails_saved_and_live_preferences_apply_across_windows_and_views"

@@ -248,6 +248,16 @@ impl ThumbnailSlot {
         );
         crate::ui::preferences::PreferenceManager::shared().bind_preference(
             &widget,
+            crate::ui::preferences::PreferenceManager::folder_previews,
+            |widget, _| {
+                let slot = widget
+                    .downcast_ref::<ThumbnailSlot>()
+                    .expect("thumbnail slot");
+                super::folder_preview::refresh(slot);
+            },
+        );
+        crate::ui::preferences::PreferenceManager::shared().bind_preference(
+            &widget,
             crate::ui::preferences::PreferenceManager::icon_theme,
             |widget, theme| {
                 crate::assets::icon_theme::select(&theme);

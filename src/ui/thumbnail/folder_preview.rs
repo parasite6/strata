@@ -75,8 +75,12 @@ fn folder_source(
     if !entry.is_directory() || entry.location.is_administrator() {
         return None;
     }
+    let path = entry.location.native_path()?;
+    if crate::adapters::mount_watch::latest().is_remote_share(path) {
+        return None;
+    }
     Some(FolderSource {
-        path: entry.location.native_path()?.to_path_buf(),
+        path: path.to_path_buf(),
         modified: known_metadata(&entry.modified_unix_seconds),
         show_hidden,
         thumbnail_size,
@@ -85,7 +89,9 @@ fn folder_source(
 
 fn previews_allowed(folder: &Path) -> bool {
     let preferences = crate::ui::preferences::PreferenceManager::shared();
-    preferences.show_thumbnails() && preferences.custom_icon(folder).is_none()
+    preferences.show_thumbnails()
+        && preferences.folder_previews()
+        && preferences.custom_icon(folder).is_none()
 }
 
 fn apply(slot: &ThumbnailSlot, source: Option<FolderSource>, scan: bool) {

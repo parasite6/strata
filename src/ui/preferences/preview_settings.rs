@@ -137,6 +137,15 @@ impl PreferenceManager {
         self.save_preferences();
     }
 
+    pub fn folder_previews(&self) -> bool {
+        self.preferences.borrow().folder_previews
+    }
+
+    pub fn set_folder_previews(&self, enabled: bool) {
+        self.preferences.borrow_mut().folder_previews = enabled;
+        self.save_preferences();
+    }
+
     pub fn set_thumbnail_workers(&self, workers: usize) {
         self.preferences.borrow_mut().thumbnail_workers =
             workers.clamp(1, crate::sandbox::browser::MAX_WORKERS);

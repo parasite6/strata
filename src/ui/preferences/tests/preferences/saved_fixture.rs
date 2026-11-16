@@ -247,9 +247,10 @@ fn assert_saved_previews(manager: &PreferenceManager) {
             manager.thumbnail_workers(),
             manager.show_thumbnails(),
             manager.stl_thumbnails(),
+            manager.folder_previews(),
         ),
-        (false, 6, false, true),
-        "(watch network folders, thumbnail workers, thumbnails, STL thumbnails)"
+        (false, 6, false, true, false),
+        "(watch network folders, thumbnail workers, thumbnails, STL thumbnails, folder previews)"
     );
 }
 

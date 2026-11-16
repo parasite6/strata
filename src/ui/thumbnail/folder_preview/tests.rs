@@ -208,6 +208,29 @@ fn scrolling_defers_the_scan_until_resumed() {
 }
 
 #[test]
+fn folder_on_a_network_share_gets_none() {
+    crate::test_support::gtk_test(
+        "ui::thumbnail::folder_preview::tests::folder_on_a_network_share_gets_none",
+        || {
+            let root = tempfile::tempdir().expect("test fixture");
+            let folder = picture_folder(root.path());
+            crate::adapters::mount_watch::publish_for_isolated_test(Some(
+                crate::adapters::MountTable::parse(
+                    format!(
+                        "1 0 8:1 / / rw - ext4 /dev/root rw\n\
+                         2 1 0:2 / {} rw - nfs4 server:/share rw\n",
+                        root.path().display()
+                    )
+                    .as_bytes(),
+                ),
+            ));
+            let slot = super::super::ThumbnailSlot::new(96);
+            assert_eq!(bound(&slot, &folder), 0);
+        },
+    );
+}
+
+#[test]
 fn plain_folder_gets_none() {
     crate::test_support::gtk_test(
         "ui::thumbnail::folder_preview::tests::plain_folder_gets_none",
@@ -264,20 +287,27 @@ fn a_stale_scan_does_not_attach() {
 }
 
 #[test]
-fn turning_thumbnails_off_clears_previews() {
+fn turning_thumbnails_or_folder_previews_off_clears_previews() {
     crate::test_support::gtk_test(
-        "ui::thumbnail::folder_preview::tests::turning_thumbnails_off_clears_previews",
+        "ui::thumbnail::folder_preview::tests::turning_thumbnails_or_folder_previews_off_clears_previews",
         || {
-            let manager = crate::ui::preferences::PreferenceManager::shared();
+            use crate::ui::preferences::PreferenceManager;
+            let manager = PreferenceManager::shared();
             let root = tempfile::tempdir().expect("test fixture");
             let slot = super::super::ThumbnailSlot::new(96);
             assert_eq!(bound(&slot, &picture_folder(root.path())), 2);
-            manager.set_show_thumbnails(false);
-            settle();
-            assert!(slot.folder_preview_children().is_empty());
-            manager.set_show_thumbnails(true);
-            settle();
-            assert_eq!(slot.folder_preview_children().len(), 2);
+            let toggles: [fn(&PreferenceManager, bool); 2] = [
+                PreferenceManager::set_show_thumbnails,
+                PreferenceManager::set_folder_previews,
+            ];
+            for toggle in toggles {
+                toggle(&manager, false);
+                settle();
+                assert!(slot.folder_preview_children().is_empty());
+                toggle(&manager, true);
+                settle();
+                assert_eq!(slot.folder_preview_children().len(), 2);
+            }
         },
     );
 }

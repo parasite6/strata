@@ -84,6 +84,7 @@ impl Default for Preferences {
             thumbnail_workers: crate::sandbox::browser::default_worker_limit(),
             show_thumbnails: true,
             stl_thumbnails: false,
+            folder_previews: true,
             icons_thumbnail_size: default_icons_thumbnail_size(),
             chooser_column_width: None,
             browser_column_width: None,

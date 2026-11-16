@@ -104,6 +104,7 @@ fn all_preference_setters_publish_and_persist_without_duplicate_notifications() 
                 |m| m.set_thumbnail_workers(3),
                 |m| m.set_show_thumbnails(true),
                 |m| m.set_stl_thumbnails(false),
+                |m| m.set_folder_previews(true),
                 |m| m.set_icons_thumbnail_size(96),
                 |m| m.set_chooser_column_width(Some(360)),
                 |m| m.set_chooser_list_columns(None),

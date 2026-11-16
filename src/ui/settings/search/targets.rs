@@ -303,6 +303,12 @@ pub(super) const TARGETS: &[Target] = &[
         aliases: "appearance 3d stl models printing mesh rendered thumbnails icons",
     },
     Target {
+        id: "folder-previews",
+        page: "theme",
+        title: "Folder previews",
+        aliases: "appearance folders directories pictures photos videos thumbnails icons previews",
+    },
+    Target {
         id: "icon-theme",
         page: "theme",
         title: "Icon theme",

@@ -396,6 +396,18 @@ fn append_file_icon_colors_option(content: &gtk::Box, preferences: &Rc<Preferenc
         PreferenceManager::set_stl_thumbnails,
     );
     group.append(&row);
+    let (row, toggle) = super::settings_option(
+        "Folder previews",
+        "Show pictures and videos from inside a folder on its icon in Icons view. Requires Show thumbnails.",
+        preferences.folder_previews(),
+    );
+    bind_switch(
+        preferences,
+        &toggle,
+        PreferenceManager::folder_previews,
+        PreferenceManager::set_folder_previews,
+    );
+    group.append(&row);
 }
 
 fn append_omarchy_variant_option(
