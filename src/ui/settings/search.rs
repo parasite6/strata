@@ -203,10 +203,16 @@ impl Pages {
     }
 
     fn show_page_buttons(&self, matches: Option<&Matches>) {
+        let mut navigation = None;
         for (button, page) in &self.buttons {
             if let Some(button) = button.upgrade() {
                 button.set_visible(matches.is_none_or(|matches| matches.pages.contains(page)));
+                navigation = navigation.or_else(|| button.parent());
             }
+        }
+        // The navigation keeps its size, so GTK can leave hidden rows painted.
+        if let Some(navigation) = navigation {
+            navigation.queue_draw();
         }
     }
 
