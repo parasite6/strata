@@ -51,6 +51,8 @@ fn folder_previews_replace_and_clear_children() {
                     .iter()
                     .all(|child| child.parent().as_ref() == Some(folder.upcast_ref()))
             );
+            assert!([&a, &b].iter().all(|child| !child.can_target()
+                && child.accessible_role() == gtk::AccessibleRole::Presentation));
             folder.set_folder_previews(std::slice::from_ref(&c));
             assert!(a.parent().is_none() && b.parent().is_none());
             assert_eq!(folder.folder_preview_children(), std::slice::from_ref(&c));

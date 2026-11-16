@@ -64,8 +64,12 @@ impl IconsCard {
             look.thumbnail_size,
             look.thumbnail_size,
         );
-        let show_hidden = look.state.is_some_and(ViewState::shows_hidden);
-        thumbnail::bind_folder_previews(&self.icon, entry, show_hidden, look.thumbnail_size);
+        let binding = thumbnail::FolderBinding {
+            show_hidden: look.state.is_some_and(ViewState::shows_hidden),
+            thumbnail_size: look.thumbnail_size,
+            scrolling: look.scrolling,
+        };
+        thumbnail::bind_folder_previews(&self.icon, entry, binding);
         if look.scrolling {
             self.dim(entry);
         } else {
@@ -143,6 +147,7 @@ impl CardRefresh<'_> {
         };
         if thumbnail::near_viewport(&card) {
             parts.refresh_chrome(&item, &entry, self.marks);
+            thumbnail::resume_folder_previews(&parts.icon);
         }
     }
 }

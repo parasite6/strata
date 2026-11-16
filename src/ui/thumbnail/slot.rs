@@ -31,6 +31,7 @@ mod imp {
         pub(super) folder_previews: RefCell<Vec<super::ThumbnailSlot>>,
         pub(super) folder_source: RefCell<Option<super::super::folder_preview::FolderSource>>,
         pub(super) folder_generation: Cell<u64>,
+        pub(super) folder_scan_deferred: Cell<bool>,
     }
 
     #[glib::object_subclass]
@@ -357,6 +358,8 @@ impl ThumbnailSlot {
             old.unparent();
         }
         for child in children {
+            child.set_can_target(false);
+            child.set_accessible_role(gtk::AccessibleRole::Presentation);
             child.set_parent(self);
         }
         self.imp().folder_previews.replace(children.to_vec());
@@ -389,6 +392,10 @@ impl ThumbnailSlot {
 
     pub(super) fn folder_generation(&self) -> u64 {
         self.imp().folder_generation.get()
+    }
+
+    pub(super) fn replace_folder_scan_deferred(&self, deferred: bool) -> bool {
+        self.imp().folder_scan_deferred.replace(deferred)
     }
 
     pub(crate) fn folder_preview_children(&self) -> Vec<ThumbnailSlot> {

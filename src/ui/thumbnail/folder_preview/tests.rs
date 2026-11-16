@@ -121,8 +121,14 @@ fn settle() {
     }
 }
 
+const SETTLED: super::FolderBinding = super::FolderBinding {
+    show_hidden: false,
+    thumbnail_size: 96,
+    scrolling: false,
+};
+
 fn bound(slot: &super::super::ThumbnailSlot, path: &Path) -> usize {
-    super::bind_folder_previews(slot, &folder_entry(path), false, 96);
+    super::bind_folder_previews(slot, &folder_entry(path), SETTLED);
     settle();
     slot.folder_preview_children().len()
 }
@@ -150,6 +156,53 @@ fn picture_folder_gets_child_previews() {
             let root = tempfile::tempdir().expect("test fixture");
             let slot = super::super::ThumbnailSlot::new(96);
             assert_eq!(bound(&slot, &picture_folder(root.path())), 2);
+        },
+    );
+}
+
+#[test]
+fn customizing_a_shown_folder_drops_and_restores_previews() {
+    crate::test_support::gtk_test(
+        "ui::thumbnail::folder_preview::tests::customizing_a_shown_folder_drops_and_restores_previews",
+        || {
+            let manager = crate::ui::preferences::PreferenceManager::shared();
+            let root = tempfile::tempdir().expect("test fixture");
+            let folder = picture_folder(root.path());
+            let slot = super::super::ThumbnailSlot::new(96);
+            let icon = crate::assets::icons::FOLDER;
+            super::super::set_thumbnail_or_icon(&slot, &folder_entry(&folder), icon, 96, 96);
+            assert_eq!(bound(&slot, &folder), 2);
+            manager.set_custom_icon(
+                &folder,
+                Some(crate::assets::icons::CUSTOMIZATION_CHOICES[0].0),
+            );
+            settle();
+            assert!(slot.folder_preview_children().is_empty());
+            manager.set_custom_icon(&folder, None);
+            settle();
+            assert_eq!(slot.folder_preview_children().len(), 2);
+        },
+    );
+}
+
+#[test]
+fn scrolling_defers_the_scan_until_resumed() {
+    crate::test_support::gtk_test(
+        "ui::thumbnail::folder_preview::tests::scrolling_defers_the_scan_until_resumed",
+        || {
+            let root = tempfile::tempdir().expect("test fixture");
+            let folder = picture_folder(root.path());
+            let slot = super::super::ThumbnailSlot::new(96);
+            let scrolling = super::FolderBinding {
+                scrolling: true,
+                ..SETTLED
+            };
+            super::bind_folder_previews(&slot, &folder_entry(&folder), scrolling);
+            settle();
+            assert!(slot.folder_preview_children().is_empty());
+            super::resume_folder_previews(&slot);
+            settle();
+            assert_eq!(slot.folder_preview_children().len(), 2);
         },
     );
 }
@@ -204,7 +257,7 @@ fn a_stale_scan_does_not_attach() {
             let root = tempfile::tempdir().expect("test fixture");
             let folder = picture_folder(root.path());
             let slot = super::super::ThumbnailSlot::new(96);
-            super::bind_folder_previews(&slot, &folder_entry(&folder), false, 96);
+            super::bind_folder_previews(&slot, &folder_entry(&folder), SETTLED);
             assert_eq!(bound(&slot, &folder.join("a.png")), 0);
         },
     );

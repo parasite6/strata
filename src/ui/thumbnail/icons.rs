@@ -421,6 +421,7 @@ fn refresh_tracked_icon(image: &ThumbnailSlot, path: &Path, icon: &str) {
         cancel_thumbnail(image.as_ptr() as usize);
     }
     let customized = apply_path_customization(image, path, icon);
+    super::folder_preview::refresh(image);
     TRACKED_CUSTOMIZED_ICONS.with(|icons| {
         let Ok(mut icons) = icons.try_borrow_mut() else {
             return;

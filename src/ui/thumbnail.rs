@@ -31,7 +31,7 @@ mod viewport;
 pub(super) use cache::remember_thumbnail_for_test;
 use cache::{CacheHit, THUMBNAIL_CACHE};
 pub(super) use cache::{cached_thumbnail, preserve_renamed_thumbnail};
-pub(super) use folder_preview::bind_folder_previews;
+pub(super) use folder_preview::{FolderBinding, bind_folder_previews, resume_folder_previews};
 use icons::{TRACKED_CUSTOMIZED_ICONS, set_fallback_icon};
 pub(super) use icons::{
     refresh_all_customized_icons, refresh_customized_icons, refresh_customized_icons_within,

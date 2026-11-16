@@ -33,23 +33,38 @@ thread_local! {
     static CHOSEN: RefCell<HashMap<FolderSource, Vec<PathBuf>>> = RefCell::new(HashMap::new());
 }
 
+/// How a folder icon binds its previews.
+#[derive(Clone, Copy)]
+pub(in crate::ui) struct FolderBinding {
+    pub(in crate::ui) show_hidden: bool,
+    pub(in crate::ui) thumbnail_size: i32,
+    /// Scans wait for [`resume_folder_previews`] while the view scrolls.
+    pub(in crate::ui) scrolling: bool,
+}
+
 /// Shows up to four of a local folder's pictures and videos on its icon; anything else clears them.
 pub(in crate::ui) fn bind_folder_previews(
     slot: &ThumbnailSlot,
     entry: &FileEntry,
-    show_hidden: bool,
-    thumbnail_size: i32,
+    binding: FolderBinding,
 ) {
-    let source = folder_source(entry, show_hidden, thumbnail_size);
+    let source = folder_source(entry, binding.show_hidden, binding.thumbnail_size);
     let previous = slot.replace_folder_source(source.clone());
     if previous.as_ref().map(|old| &old.path) != source.as_ref().map(|new| &new.path) {
         slot.clear_folder_previews();
     }
-    apply(slot, source);
+    apply(slot, source, !binding.scrolling);
+}
+
+/// Starts the scan a binding deferred while the view scrolled.
+pub(in crate::ui) fn resume_folder_previews(slot: &ThumbnailSlot) {
+    if slot.replace_folder_scan_deferred(false) {
+        apply(slot, slot.folder_source(), true);
+    }
 }
 
 pub(super) fn refresh(slot: &ThumbnailSlot) {
-    apply(slot, slot.folder_source());
+    apply(slot, slot.folder_source(), true);
 }
 
 fn folder_source(
@@ -73,14 +88,19 @@ fn previews_allowed(folder: &Path) -> bool {
     preferences.show_thumbnails() && preferences.custom_icon(folder).is_none()
 }
 
-fn apply(slot: &ThumbnailSlot, source: Option<FolderSource>) {
+fn apply(slot: &ThumbnailSlot, source: Option<FolderSource>, scan: bool) {
     let generation = slot.next_folder_generation();
+    slot.replace_folder_scan_deferred(false);
     let Some(source) = source.filter(|source| previews_allowed(&source.path)) else {
         slot.clear_folder_previews();
         return;
     };
     if let Some(chosen) = CHOSEN.with_borrow(|chosen| chosen.get(&source).cloned()) {
         attach(slot, &source, &chosen);
+        return;
+    }
+    if !scan {
+        slot.replace_folder_scan_deferred(true);
         return;
     }
     let slot = slot.downgrade();
@@ -146,13 +166,10 @@ pub(super) fn preview_children(folder: &Path, show_hidden: bool) -> Vec<PathBuf>
         .take(MAX_SCANNED_ENTRIES)
         .filter_map(Result::ok)
         .filter(|entry| show_hidden || !entry.file_name().as_encoded_bytes().starts_with(b"."))
-        .filter(|entry| {
-            entry
-                .metadata()
-                .is_ok_and(|metadata| metadata.file_type().is_file() && metadata.len() > 0)
-        })
+        .filter(|entry| entry.file_type().is_ok_and(|kind| kind.is_file()))
         .map(|entry| entry.path())
         .filter(|path| is_folder_preview_kind(path))
+        .filter(|path| std::fs::symlink_metadata(path).is_ok_and(|metadata| metadata.len() > 0))
         .collect();
     chosen.sort_by(|left, right| left.file_name().cmp(&right.file_name()));
     chosen.truncate(MAX_PREVIEW_TILES);
