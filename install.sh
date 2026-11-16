@@ -3,6 +3,9 @@
 set -Eeuo pipefail
 
 REPOSITORY="lgse/strata"
+# Source builds come from this fork; signed prebuilt releases stay upstream's.
+SOURCE_REPOSITORY="parasite6/strata"
+SOURCE_REF="main"
 APP_ID="io.github.lgse.Strata"
 MIN_GLIBC="2.39"
 REQUIRED_PACKAGES=(
@@ -10,6 +13,17 @@ REQUIRED_PACKAGES=(
   gst-plugins-base gst-plugins-good gtk4 gtksourceview5 gvfs poppler-glib xdg-utils
 )
 RAW_PREVIEW_PACKAGES=(imagemagick libraw dcraw)
+ARCH_BUILD_PACKAGES=(base-devel git pkgconf rust)
+FEDORA_PACKAGES=(
+  bubblewrap desktop-file-utils /usr/bin/ffmpeg ffmpegthumbnailer fontconfig gstreamer1
+  gstreamer1-plugin-libav gstreamer1-plugins-base gstreamer1-plugins-good gtk4 gtksourceview5
+  gvfs hicolor-icon-theme poppler-glib xdg-utils
+)
+FEDORA_BUILD_PACKAGES=(
+  cargo fontconfig-devel gcc git glib2-devel gstreamer1-devel gstreamer1-plugins-base-devel
+  gtk4-devel gtksourceview5-devel pkgconf-pkg-config poppler-glib-devel rust
+)
+FEDORA_RAW_PACKAGES=(ImageMagick LibRaw-samples dcraw)
 # Raw Ed25519 public keys; keep in sync with data/update-keys.json, the updater's trust store.
 RELEASE_PUBLIC_KEYS=(
   1589903225a2dd3c1bc87125884801552b07fd0a09855cfdbde3b84601cebf3c
@@ -24,6 +38,8 @@ SIGNED_ARCHIVE_SHA256=""
 
 NON_INTERACTIVE=no
 VERBOSE=no
+INSTALL_FROM=auto
+SOURCE_DIR=""
 WITH_SMB=ask
 WITH_RAW=ask
 WITH_DESKTOP_ENTRY=ask
@@ -129,6 +145,8 @@ case "$(installer_locale)" in
     [signature]='Verify the release signature'
     [digest]='Verify the signed SHA-256 digest'
     [unpack]='Unpack the verified release'
+    [fetch_source]='Downloading source from %{repository}'
+    [build]='Building Strata from source'
     [application]='Install the application'
     [ready]='Ready to explore'
     [installed_notices]='Installed — review setup details'
@@ -142,61 +160,63 @@ case "$(installer_locale)" in
   ) ;;
   hu) INSTALLER_MESSAGES=(
     [setup]='Interaktív telepítő'
-    [tagline]='Böngéssze a könyvtárait akadálytalanul.'
+    [tagline]='Fedezzen fel minden réteget.'
     [partial]='A Strata telepítve van, de a beállítás nem fejeződött be.'
-    [failed]='Nem fejeződött be a telepítés.'
+    [failed]='A telepítés nem fejeződött be.'
     [details]='Részletes kimenet: %{path}'
-    [cancelled]='Telepítés megszakítva. Nem történt módosítás.'
+    [cancelled]='A telepítés megszakítva. Nem történt módosítás.'
     [task_failed]='Sikertelen: %{task}'
     [read_failed]='Nem sikerült beolvasni a választását.'
     [keys_toggle]='↑/↓ mozgás · Szóköz be/ki · Enter telepítés · Esc mégse'
-    [keys_choose]='↑/↓ kiválasztás · Enter tovább · Esc mégse'
-    [plain_toggle]='Kapcsoljon be vagy ki egy beállítást a számával; Enter a telepítéshez, q a megszakításhoz:'
+    [keys_choose]='↑/↓ választás · Enter tovább · Esc mégse'
+    [plain_toggle]='Kapcsoljon be vagy ki egy lehetőséget a számával; Enter a telepítéshez, q a megszakításhoz:'
     [plain_choose]='Válasszon: [1], vagy q a megszakításhoz:'
     [invalid_selection]='Válasszon a felsorolt lehetőségek közül.'
-    [standard]='Strata telepítése (ajánlott)'
+    [standard]='A Strata telepítése (ajánlott)'
     [custom]='Telepítés testreszabása'
-    [standard_hint]='Minden, amit ez a rendszer támogat: indító, mappák, fájlválasztó és nem kötelező integrációk.'
-    [custom_hint]='Válassza ki az asztali integrációkat és a nem kötelező támogatásokat.'
+    [standard_hint]='Minden, amit ez a rendszer támogat: indító, mappák, fájlválasztó és opcionális integrációk.'
+    [custom_hint]='Válassza ki az asztali integrációkat és az opcionális támogatást.'
     [setup_title]='Válassza ki a beállítást'
     [launcher]='Alkalmazásindító'
     [folders]='Alapértelmezett fájlkezelő'
     [reveal]='Fájl helyének megnyitása'
     [chooser]='Megnyitási és mentési párbeszédablakok'
-    [launcher_hint]='Strata hozzáadása az alkalmazásmenühöz.'
-    [folders_hint]='Strata használata mappákhoz és a „Fájl helyének megnyitása” művelethez. Tartalmazza az indítót is.'
+    [launcher_hint]='A Strata hozzáadása az alkalmazásmenühöz.'
+    [folders_hint]='A Strata használata mappákhoz és a „Fájl helyének megnyitása” művelethez. Tartalmazza az indítót is.'
     [reveal_hint]='Fájlok megjelenítése más alkalmazásokból a mappák alapértelmezett kezelőjének módosítása nélkül.'
     [reveal_ready]='A Strata mostantól kezeli a „Fájl helyének megnyitása” kéréseket.'
     [reveal_relogin]='A FileManager1 szolgáltatás telepítve lett, de a munkamenetbuszt nem sikerült újratölteni. Jelentkezzen ki, majd be újra, hogy a Strata kezelje a „Fájl helyének megnyitása” kéréseket.'
-    [chooser_hint]='Strata használata a portál párbeszédablakaihoz. Újraindítja a portálszolgáltatást; előbb zárja be a fájlpárbeszédablakokat.'
+    [chooser_hint]='A Strata használata a portál párbeszédablakaihoz. Újraindítja a portálszolgáltatást; előbb zárja be a fájlpárbeszédablakokat.'
     [smb]='Windows hálózati megosztások'
-    [smb_hint]='SMB-támogatás telepítése a hálózati megosztások böngészéséhez. (Nem kötelező)'
+    [smb_hint]='Opcionális SMB-támogatás telepítése a hálózati megosztások böngészéséhez.'
     [raw]='Fényképezőgépes RAW-támogatás'
-    [raw_hint]='Képdekóderek telepítése a szélesebb körű előnézeti támogatáshoz. (Nem kötelező)'
+    [raw_hint]='Opcionális képdekóderek telepítése a szélesebb körű előnézeti támogatáshoz.'
     [omarchy]='Omarchy fájlkezelő-gyorsbillentyűk'
-    [omarchy_hint]='Fájlkezelő gyorsbillentyűinek lecserélése. Biztonsági másolat készül.'
+    [omarchy_hint]='A fájlkezelő gyorsbillentyűinek lecserélése. Biztonsági másolat készül.'
     [udiskie]='Titkosított meghajtók feloldása'
     [udiskie_hint]='Az udiskie beállításainak szerkesztése, a LUKS automatikus csatolásának letiltása és az udiskie újraindítása. Visszaállítás: strata --uninstall-udiskie-unlock.'
     [custom_title]='Szabja testre a Stratát'
     [plan]='Telepítési terv'
     [destination]='Telepítés ide: %{path}'
     [defaults_unchanged]='Az alapértelmezett alkalmazások és gyorsbillentyűk változatlanok maradnak.'
-    [dependencies_ready]='Már telepítve van az összes kiválasztott futtatókörnyezeti csomag.'
+    [dependencies_ready]='Az összes kiválasztott futtatókörnyezeti csomag már telepítve van.'
     [dependencies]='Függőségek telepítése'
     [packages]='Telepítendő csomagok: %{packages}'
     [reinstall]='Ez lecseréli a következőt: %{path}. A mentett beállításai megmaradnak.'
-    [installing]='Strata telepítése'
-    [download]='Strata %{version} letöltése'
-    [download_manifest]='Aláírt kiadási jegyzék letöltése'
-    [download_signatures]='Kiadás aláírásainak letöltése'
-    [signature]='Kiadás aláírásának ellenőrzése'
-    [digest]='Aláírt SHA-256 kivonat ellenőrzése'
-    [unpack]='Ellenőrzött kiadás kicsomagolása'
-    [application]='Alkalmazás telepítése'
-    [ready]='Felfedezés megkezdése'
+    [installing]='A Strata telepítése'
+    [download]='A Strata %{version} letöltése'
+    [download_manifest]='Az aláírt kiadási jegyzék letöltése'
+    [download_signatures]='A kiadás aláírásainak letöltése'
+    [signature]='A kiadás aláírásának ellenőrzése'
+    [digest]='Az aláírt SHA-256 kivonat ellenőrzése'
+    [unpack]='Az ellenőrzött kiadás kicsomagolása'
+    [fetch_source]='Forráskód letöltése innen: %{repository}'
+    [build]='A Strata fordítása forráskódból'
+    [application]='Az alkalmazás telepítése'
+    [ready]='Indulhat a felfedezés'
     [installed_notices]='Telepítve — tekintse át a beállítás részleteit'
     [installed_warnings]='Telepítve, figyelmeztetésekkel'
-    [installed]='A Strata %{version} telepítve lett.'
+    [installed]='A Strata %{version} telepítve van.'
     [launch]='Az indításhoz futtassa a következőt: %{command}'
     [usage_intro]='Kapcsolók nélkül választhat az ajánlott telepítés és az asztali integráció testreszabása között.'
     [verbose_help]='Részletes letöltési és ellenőrzési kimenet megjelenítése'
@@ -255,6 +275,8 @@ case "$(installer_locale)" in
     [signature]='Vérifier la signature de la version'
     [digest]='Vérifier l'"'"'empreinte SHA-256 signée'
     [unpack]='Décompresser la version vérifiée'
+    [fetch_source]='Téléchargement des sources depuis %{repository}'
+    [build]='Compilation de Strata depuis les sources'
     [application]='Installer l’application'
     [ready]='Tout est prêt pour explorer'
     [installed_notices]='Installé — consultez les détails de configuration'
@@ -318,6 +340,8 @@ case "$(installer_locale)" in
     [signature]='Signatur der Version überprüfen'
     [digest]='Signierten SHA-256-Hash überprüfen'
     [unpack]='Überprüfte Version entpacken'
+    [fetch_source]='Quellcode von %{repository} wird heruntergeladen'
+    [build]='Strata wird aus dem Quellcode gebaut'
     [application]='Anwendung installieren'
     [ready]='Bereit zum Erkunden'
     [installed_notices]='Installiert — Einrichtungshinweise prüfen'
@@ -381,6 +405,8 @@ case "$(installer_locale)" in
     [signature]='Verificar la firma de la versión'
     [digest]='Verificar el resumen SHA-256 firmado'
     [unpack]='Extraer la versión verificada'
+    [fetch_source]='Descargando el código fuente de %{repository}'
+    [build]='Compilando Strata desde el código fuente'
     [application]='Instalar la aplicación'
     [ready]='Todo listo para explorar'
     [installed_notices]='Instalado — revisa los detalles de configuración'
@@ -444,6 +470,8 @@ case "$(installer_locale)" in
     [signature]='リリースの署名を検証'
     [digest]='署名済み SHA-256 ダイジェストを検証'
     [unpack]='検証済みリリースを展開'
+    [fetch_source]='%{repository} からソースをダウンロード中'
+    [build]='ソースから Strata をビルド中'
     [application]='アプリをインストール'
     [ready]='準備ができました'
     [installed_notices]='インストール済み — 設定の詳細を確認してください'
@@ -507,6 +535,8 @@ case "$(installer_locale)" in
     [signature]='Verificar a assinatura da versão'
     [digest]='Verificar o resumo SHA-256 assinado'
     [unpack]='Extrair a versão verificada'
+    [fetch_source]='Baixando o código-fonte de %{repository}'
+    [build]='Compilando o Strata a partir do código-fonte'
     [application]='Instalar o aplicativo'
     [ready]='Tudo pronto para explorar'
     [installed_notices]='Instalado — confira os detalhes da configuração'
@@ -570,6 +600,8 @@ case "$(installer_locale)" in
     [signature]='릴리스 서명 검증'
     [digest]='서명된 SHA-256 다이제스트 검증'
     [unpack]='검증된 릴리스 압축 풀기'
+    [fetch_source]='%{repository}에서 소스를 내려받는 중'
+    [build]='소스에서 Strata 빌드 중'
     [application]='앱 설치'
     [ready]='탐색할 준비가 되었습니다'
     [installed_notices]='설치됨 — 설정 세부 정보를 확인하세요'
@@ -633,6 +665,8 @@ case "$(installer_locale)" in
     [signature]='Xác minh chữ ký của bản phát hành'
     [digest]='Xác minh mã băm SHA-256 đã ký'
     [unpack]='Giải nén bản phát hành đã xác minh'
+    [fetch_source]='Đang tải mã nguồn từ %{repository}'
+    [build]='Đang biên dịch Strata từ mã nguồn'
     [application]='Cài đặt ứng dụng'
     [ready]='Sẵn sàng khám phá'
     [installed_notices]='Đã cài đặt — hãy xem chi tiết thiết lập'
@@ -696,6 +730,8 @@ case "$(installer_locale)" in
     [signature]='Verifica della firma della versione'
     [digest]='Verifica del digest SHA-256 firmato'
     [unpack]='Estrai la versione verificata'
+    [fetch_source]='Download del codice sorgente da %{repository}'
+    [build]='Compilazione di Strata dal codice sorgente'
     [application]='Installa l’applicazione'
     [ready]='Pronto per esplorare'
     [installed_notices]='Installato — controlla i dettagli della configurazione'
@@ -759,6 +795,8 @@ case "$(installer_locale)" in
     [signature]='Проверка подписи выпуска'
     [digest]='Проверка подписанной контрольной суммы SHA-256'
     [unpack]='Распаковка проверенного выпуска'
+    [fetch_source]='Загрузка исходного кода из %{repository}'
+    [build]='Сборка Strata из исходного кода'
     [application]='Установка приложения'
     [ready]='Всё готово к работе'
     [installed_notices]='Установлено — проверьте сведения о настройке'
@@ -822,6 +860,8 @@ case "$(installer_locale)" in
     [signature]='验证发行版签名'
     [digest]='验证已签名的 SHA-256 摘要'
     [unpack]='解压已验证的发行版'
+    [fetch_source]='正在从 %{repository} 下载源代码'
+    [build]='正在从源代码构建 Strata'
     [application]='安装应用'
     [ready]='开始探索吧'
     [installed_notices]='已安装，请查看设置详情'
@@ -885,6 +925,8 @@ case "$(installer_locale)" in
     [signature]='驗證發行版本簽章'
     [digest]='驗證已簽署的 SHA-256 摘要'
     [unpack]='解壓縮已驗證的發行版本'
+    [fetch_source]='正在從 %{repository} 下載原始碼'
+    [build]='正在從原始碼建置 Strata'
     [application]='安裝應用程式'
     [ready]='開始探索吧'
     [installed_notices]='已安裝，請查看設定詳細資訊'
@@ -1418,6 +1460,8 @@ $(text usage_intro)
 Options:
   --non-interactive             Never prompt; install every supported integration
   --verbose                     $(text verbose_help)
+  --from-source                 Build this checkout (or $SOURCE_REPOSITORY) with Cargo
+  --from-release                Install upstream's signed prebuilt release
   --with-smb                    Install SMB network-share support
   --with-raw                    Install broader image and camera RAW support
   --with-desktop-entry          Add Strata to the desktop application menu
@@ -1448,6 +1492,8 @@ parse_args() {
     case $1 in
       --non-interactive) NON_INTERACTIVE=yes ;;
       --verbose) VERBOSE=yes ;;
+      --from-source) INSTALL_FROM=source ;;
+      --from-release) INSTALL_FROM=release ;;
       --with-smb) NON_INTERACTIVE=yes; WITH_SMB=yes ;;
       --with-raw) NON_INTERACTIVE=yes; WITH_RAW=yes ;;
       --with-desktop-entry) NON_INTERACTIVE=yes; WITH_DESKTOP_ENTRY=yes ;;
@@ -1697,11 +1743,119 @@ configure_file_chooser() {
   fi
 }
 
+# A checkout holding this script builds itself unless --from-release is given.
+checkout_beside_installer() {
+  local script=${BASH_SOURCE[0]:-} directory
+  [[ -f $script ]] || return 1
+  directory=$(cd "$(dirname "$script")" 2>/dev/null && pwd) || return 1
+  [[ -r $directory/Cargo.toml && -r $directory/data/$APP_ID.desktop ]] || return 1
+  printf '%s\n' "$directory"
+}
+
+resolve_install_source() {
+  local checkout=""
+  checkout=$(checkout_beside_installer) || checkout=""
+  if [[ $INSTALL_FROM == auto ]]; then
+    if [[ -n $checkout ]]; then INSTALL_FROM=source; else INSTALL_FROM=release; fi
+  fi
+  [[ $INSTALL_FROM != source ]] || SOURCE_DIR=$checkout
+}
+
+run_dnf() {
+  if [[ $NON_INTERACTIVE == yes ]]; then
+    TASK_OUTPUT=live run_task "$(text dependencies)" sudo -n dnf install -y --skip-unavailable -- "$@" \
+      || die "Non-interactive package installation failed; passwordless sudo or cached credentials may be required."
+  else
+    TASK_OUTPUT=live run_task "$(text dependencies)" sudo dnf install --skip-unavailable -- "$@" </dev/tty
+  fi
+}
+
+install_fedora_dependencies() {
+  local missing=() requested=("${FEDORA_PACKAGES[@]}") package
+  [[ $INSTALL_FROM != source ]] || requested+=("${FEDORA_BUILD_PACKAGES[@]}")
+  [[ $WITH_SMB != yes ]] || requested+=(gvfs-smb)
+  [[ $WITH_RAW != yes ]] || requested+=("${FEDORA_RAW_PACKAGES[@]}")
+  [[ $WITH_FILE_CHOOSER != yes ]] || requested+=(xdg-desktop-portal)
+  for package in "${requested[@]}"; do
+    [[ $package == cargo || $package == rust ]] && command -v cargo >/dev/null 2>&1 && continue
+    rpm -q --whatprovides "$package" >/dev/null 2>&1 || missing+=("$package")
+  done
+
+  if ((${#missing[@]} == 0)); then
+    info "$(text dependencies_ready)"
+    return
+  fi
+
+  section "$(text dependencies)"
+  printf '  %s\n\n' "$(text packages "packages=${missing[*]}")"
+  run_dnf "${missing[@]}"
+}
+
+install_dependencies() {
+  case $1 in
+    pacman) install_arch_dependencies ;;
+    dnf) install_fedora_dependencies ;;
+  esac
+}
+
+source_version() {
+  local version revision
+  version=$(sed -n 's/^version = "\([^"]*\)"/\1/p' "$1/Cargo.toml" | head -n 1)
+  [[ -n $version ]] || version=0.0.0
+  revision=$(git -C "$1" rev-parse --short HEAD 2>/dev/null || true)
+  printf '%s%s\n' "$version" "${revision:++$revision}"
+}
+
+fetch_source() {
+  [[ -z $SOURCE_DIR ]] || return 0
+  command -v git >/dev/null 2>&1 || die "Required command not found: git"
+  SOURCE_DIR=$TEMP_DIR/source
+  run_task "$(text fetch_source "repository=$SOURCE_REPOSITORY")" git clone --depth 1 --branch "$SOURCE_REF" \
+    "https://github.com/$SOURCE_REPOSITORY.git" "$SOURCE_DIR"
+}
+
+# Mirrors the release archive layout so the integration steps work unchanged.
+stage_source_build() {
+  local source=$1 staged=$2
+  install -Dm755 "$source/target/release/strata" "$staged/strata"
+  install -Dm644 -t "$staged/portal" "$source"/data/portal/*
+  install -Dm644 -t "$staged/udiskie" "$source"/data/udiskie/*
+  install -m644 "$source/data/$APP_ID.desktop" "$source/data/$APP_ID.FileManager1.service" \
+    "$source/data/icons/scalable/apps/$APP_ID.svg" "$staged/"
+}
+
+build_from_source() {
+  local staged=$1
+  command -v cargo >/dev/null 2>&1 || die "Required command not found: cargo"
+  TASK_OUTPUT=live run_task "$(text build)" cargo build --release --locked \
+    --manifest-path "$SOURCE_DIR/Cargo.toml" --target-dir "$SOURCE_DIR/target"
+  run_task "$(text unpack)" stage_source_build "$SOURCE_DIR" "$staged"
+}
+
+download_release() {
+  local version=$1 target=$2 archive url
+  archive="strata-$version-$target.tar.gz"
+  url="https://github.com/$REPOSITORY/releases/download/v$version"
+  download_release_file "$(text download_manifest)" "$url/$MANIFEST_NAME" \
+    "$TEMP_DIR/$MANIFEST_NAME" "$MAX_MANIFEST_BYTES"
+  download_release_file "$(text download_signatures)" "$url/$SIGNATURES_NAME" \
+    "$TEMP_DIR/$SIGNATURES_NAME" "$MAX_SIGNATURES_BYTES"
+  run_task "$(text signature)" verify_release_signature "$TEMP_DIR/$MANIFEST_NAME" "$TEMP_DIR/$SIGNATURES_NAME"
+  read_signed_artifact "$TEMP_DIR/$MANIFEST_NAME" "$version" "$target" "$archive"
+  local -a download_flags=(--silent)
+  if [[ $RICH_TERMINAL == yes && $VERBOSE == no ]]; then download_flags=(--progress-bar); fi
+  TASK_PROGRESS=yes run_task "$(text download "version=$version")" curl --fail --location --show-error \
+    "${download_flags[@]}" --max-filesize "$SIGNED_ARCHIVE_SIZE" --output "$TEMP_DIR/$archive" "$url/$archive"
+  run_task "$(text digest)" verify_archive_digest "$TEMP_DIR/$archive"
+  run_task "$(text unpack)" tar -xzf "$TEMP_DIR/$archive" -C "$TEMP_DIR"
+}
+
 main() {
-  local target glibc distro_id distro_name distro_like omarchy_major version archive extracted url
-  local local_bin_on_path=no arch_based=no command
+  local target glibc distro_id distro_name distro_like omarchy_major version extracted
+  local local_bin_on_path=no arch_based=no package_manager="" command
 
   parse_args "$@"
+  resolve_install_source
   [[ $(uname -s) == Linux ]] || die "The prebuilt Strata release supports Linux only."
   [[ $EUID -ne 0 ]] || die "Run this installer as your normal desktop user, not as root."
   if [[ $NON_INTERACTIVE == no ]]; then
@@ -1737,8 +1891,15 @@ main() {
   if [[ $distro_id == arch || $distro_like == *arch* || -n $omarchy_major ]]; then
     command -v pacman >/dev/null 2>&1 || die "This Arch-based system does not provide pacman."
     arch_based=yes
+    package_manager=pacman
+  elif [[ $distro_id == fedora || $distro_like == *fedora* ]] && command -v dnf >/dev/null 2>&1; then
+    arch_based=yes
+    package_manager=dnf
   elif [[ $NON_INTERACTIVE == yes ]]; then
-    die "Non-interactive dependency installation currently supports Arch-based systems only."
+    die "Non-interactive dependency installation currently supports Arch-based and Fedora systems only."
+  fi
+  if [[ $INSTALL_FROM == source && $package_manager == pacman ]]; then
+    REQUIRED_PACKAGES+=("${ARCH_BUILD_PACKAGES[@]}")
   fi
   if [[ $WITH_UDISKIE_UNLOCK == yes ]]; then
     [[ $arch_based == yes ]] && udiskie_on_path \
@@ -1746,6 +1907,7 @@ main() {
   fi
   resolve_default_integrations "$arch_based" "$omarchy_major"
   for command in curl tar sha256sum openssl wc install sed timeout; do
+    [[ $INSTALL_FROM == release || $command == install || $command == sed ]] || continue
     command -v "$command" >/dev/null 2>&1 || die "Required command not found: $command"
   done
 
@@ -1770,23 +1932,17 @@ main() {
   TEMP_DIR=$(mktemp -d)
   LOG_FILE=$(mktemp "${TMPDIR:-/tmp}/strata-install.XXXXXX.log")
   section "$(text installing)"
-  version=$(latest_stable_version)
-  archive="strata-$version-$target.tar.gz"
-  url="https://github.com/$REPOSITORY/releases/download/v$version"
-  download_release_file "$(text download_manifest)" "$url/$MANIFEST_NAME" \
-    "$TEMP_DIR/$MANIFEST_NAME" "$MAX_MANIFEST_BYTES"
-  download_release_file "$(text download_signatures)" "$url/$SIGNATURES_NAME" \
-    "$TEMP_DIR/$SIGNATURES_NAME" "$MAX_SIGNATURES_BYTES"
-  run_task "$(text signature)" verify_release_signature "$TEMP_DIR/$MANIFEST_NAME" "$TEMP_DIR/$SIGNATURES_NAME"
-  read_signed_artifact "$TEMP_DIR/$MANIFEST_NAME" "$version" "$target" "$archive"
-  local -a download_flags=(--silent)
-  if [[ $RICH_TERMINAL == yes && $VERBOSE == no ]]; then download_flags=(--progress-bar); fi
-  TASK_PROGRESS=yes run_task "$(text download "version=$version")" curl --fail --location --show-error \
-    "${download_flags[@]}" --max-filesize "$SIGNED_ARCHIVE_SIZE" --output "$TEMP_DIR/$archive" "$url/$archive"
-  run_task "$(text digest)" verify_archive_digest "$TEMP_DIR/$archive"
-  run_task "$(text unpack)" tar -xzf "$TEMP_DIR/$archive" -C "$TEMP_DIR"
-
-  extracted=$TEMP_DIR/${archive%.tar.gz}
+  if [[ $INSTALL_FROM == source ]]; then
+    fetch_source
+    install_dependencies "$package_manager"
+    version=$(source_version "$SOURCE_DIR")
+    extracted=$TEMP_DIR/strata-source
+    build_from_source "$extracted"
+  else
+    version=$(latest_stable_version)
+    download_release "$version" "$target"
+    extracted=$TEMP_DIR/strata-$version-$target
+  fi
   [[ -x $extracted/strata ]] || die "The verified archive does not contain the Strata binary."
   [[ -r $extracted/$APP_ID.desktop && -r $extracted/$APP_ID.svg ]] \
     || die "The verified archive is missing desktop integration files."
@@ -1802,8 +1958,8 @@ main() {
     warn "This release does not include encrypted-volume integration; skipping it."
     WITH_UDISKIE_UNLOCK=no
   fi
-  if [[ $arch_based == yes ]]; then
-    install_arch_dependencies
+  if [[ $INSTALL_FROM == release ]]; then
+    install_dependencies "$package_manager"
   fi
   run_task "$(text application)" install -Dm755 "$extracted/strata" "$BIN_PATH"
   CORE_INSTALLED=yes

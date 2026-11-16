@@ -219,6 +219,7 @@
   "Choose a visited folder": "訪問済みのフォルダーを選択",
   "Choose an existing folder.": "既存のフォルダーを選択してください。",
   "Choose any emoji for this item": "この項目に使う絵文字を選択します",
+  "Use a PNG or SVG image for this item": "この項目に PNG または SVG 画像を使用します",
   "Choose the file": "ファイルを選択",
   "Choose the filled items, or the file": "入力済みの項目またはファイルを選択",
   "Clear copy and cut marks": "コピーと切り取りの印を消去",

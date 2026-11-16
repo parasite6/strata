@@ -55,9 +55,9 @@ use defaults::{
     default_browser_density, default_browser_mode, default_cross_volume_drop_strategy,
     default_date_format, default_density_custom_px, default_double_clicks, default_enabled,
     default_file_clicks, default_folder_clicks, default_frame_density, default_full_volume,
-    default_icons_thumbnail_size, default_release_channel, default_search_entry_limit,
-    default_search_time_limit, default_sidebar_order, default_sort_direction, default_sort_key,
-    default_video_preview_backend,
+    default_icon_theme, default_icons_thumbnail_size, default_release_channel,
+    default_search_entry_limit, default_search_time_limit, default_sidebar_order,
+    default_sort_direction, default_sort_key, default_video_preview_backend,
 };
 #[cfg(test)]
 use desktop_scale::text_scale_factor_from_xft_dpi;
@@ -177,6 +177,8 @@ pub(in crate::ui) struct Preferences {
     element_glow: bool,
     #[serde(default)]
     file_icon_colors: FileIconColors,
+    #[serde(default = "default_icon_theme")]
+    icon_theme: String,
     #[serde(default = "default_browser_mode")]
     browser_mode: String,
     #[serde(default = "default_browser_density")]

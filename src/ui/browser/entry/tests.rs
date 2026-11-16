@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-use super::{catppuccin, icon_for_name};
+use super::{builtin_icon_for_name as icon_for_name, catppuccin};
 use crate::assets::icons;
 use crate::test_support::PrivateContext;
 

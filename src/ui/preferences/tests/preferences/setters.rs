@@ -43,6 +43,7 @@ fn all_preference_setters_publish_and_persist_without_duplicate_notifications() 
                 |m| m.set_element_glow(true),
                 |m| m.set_omarchy_variant(OmarchyVariant::Contrast),
                 |m| m.set_file_icon_colors(FileIconColors::Brand),
+                |m| m.set_icon_theme(crate::assets::icon_theme::BUILT_IN),
                 |m| m.set_browser_mode(BrowserMode::Icons),
                 |m| m.set_browser_density(BrowserDensity::Custom(9)),
                 |m| m.set_browser_density(BrowserDensity::Compact),

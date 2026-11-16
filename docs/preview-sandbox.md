@@ -493,7 +493,13 @@ raster images. Emoji icons retain Pango/Cairo rendering
 but pass raw pixels to GTK instead of encoding and decoding an intermediate PNG.
 
 This in-process icon path is not used for user SVGs, phone photos, or thumbnails
-of originals; those keep their sandbox boundary. User SVG previews and
+of originals; those keep their sandbox boundary. Two icon sources are the
+exception, both rendered by `assets::icon_theme` with the same `resvg` limits
+(no external or embedded references, no fonts) or the pure-Rust PNG decoder,
+capped at 4 MiB and 4096 pixels a side: files of the installed icon theme the
+user selected, which GTK applications load in-process anyway, and a PNG or SVG
+the user explicitly chose in **Customize… → Choose Image…**. Neither is a file
+merely shown while browsing. User SVG previews and
 thumbnails, Markdown SVGs, Mermaid diagrams, and equation output use a separate
 `resvg` path inside the sandbox, with image references disabled and system font
 loading enabled only when the document contains text. No toolkit libraries or

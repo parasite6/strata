@@ -16,7 +16,7 @@ use super::{
     clear_displayed_thumbnail, prepare_thumbnail_target, viewport,
 };
 use crate::{
-    assets::{self, IconContext, icons::FOLDER},
+    assets::{self, IconContext, icon_theme, icons::FOLDER},
     model::FolderColorValue,
 };
 
@@ -99,6 +99,19 @@ impl Customization {
     fn emoji(&self) -> Option<&str> {
         self.icon.as_deref().and_then(assets::icons::custom_emoji)
     }
+
+    fn image(&self) -> Option<&Path> {
+        self.icon.as_deref().and_then(assets::icons::custom_image)
+    }
+
+    /// Customized items keep the bundled look; only plain items follow the icon theme.
+    fn fallback<'a>(&self, icon: &'a str) -> &'a str {
+        if self.is_set() {
+            icon_theme::builtin(icon)
+        } else {
+            icon
+        }
+    }
 }
 
 pub(in crate::ui) fn show_fallback_icon(image: &ThumbnailSlot, icon: &str, size: i32) {
@@ -130,15 +143,18 @@ pub(super) fn set_fallback_icon(
 /// A metadata fill can find that a bound folder needs administrator access; a
 /// folder the user customized keeps its icon, as a fresh bind would.
 pub(in crate::ui) fn show_locked_folder(image: &ThumbnailSlot) {
-    use crate::assets::icons::FOLDER_LOCK;
-    if image.fallback_icon().as_deref() != Some(FOLDER) {
+    let is_folder = image
+        .fallback_icon()
+        .is_some_and(|icon| icon_theme::builtin(&icon) == FOLDER);
+    if !is_folder {
         return;
     }
+    let locked = icon_theme::named_icon(assets::icons::FOLDER_LOCK, &["folder-locked"]);
     let customized = TRACKED_CUSTOMIZED_ICONS.with_borrow_mut(|icons| {
         match icons.get_mut(&(image.as_ptr() as usize)) {
             Some(tracked) if tracked.customized => true,
             Some(tracked) => {
-                tracked.icon = FOLDER_LOCK.to_owned();
+                tracked.icon = locked.to_owned();
                 false
             }
             None => false,
@@ -147,8 +163,8 @@ pub(in crate::ui) fn show_locked_folder(image: &ThumbnailSlot) {
     if customized {
         return;
     }
-    let (texture, _) = path_icon_texture(None, FOLDER_LOCK, IconSizing::of(image));
-    image.set_fallback(FOLDER_LOCK, texture.as_ref());
+    let (texture, _) = path_icon_texture(None, locked, IconSizing::of(image));
+    image.set_fallback(locked, texture.as_ref());
 }
 
 pub(in crate::ui) fn show_customized_icon(
@@ -228,6 +244,17 @@ fn customized_icon_texture(
     fallback_icon: &str,
     sizing: IconSizing,
 ) -> Option<gdk::Texture> {
+    if let Some(image) = customization.image() {
+        return assets::custom_image_paintable(image, sizing.size, sizing.scale_factor).or_else(
+            || {
+                sizing.paint(
+                    icon_theme::builtin(fallback_icon),
+                    &customization.color_or_primary(),
+                )
+            },
+        );
+    }
+    let fallback_icon = customization.fallback(fallback_icon);
     if fallback_icon == FOLDER
         && let Some(decoration) = customization.icon.as_deref()
     {
@@ -262,7 +289,8 @@ fn apply_path_customization_image(
     kind: ImageIconKind,
 ) -> bool {
     let customization = Customization::of(path);
-    let folder = matches!(kind, ImageIconKind::Folder) || default_icon == FOLDER;
+    let folder =
+        matches!(kind, ImageIconKind::Folder) || icon_theme::builtin(default_icon) == FOLDER;
     set_customized_image_icon(image, &customization, default_icon, folder);
     customization.is_set()
 }
@@ -273,6 +301,11 @@ fn set_customized_image_icon(
     default_icon: &str,
     folder: bool,
 ) {
+    if let Some(path) = customization.image() {
+        assets::set_custom_image_icon(image, path, icon_theme::builtin(default_icon));
+        return;
+    }
+    let default_icon = customization.fallback(default_icon);
     if folder && let Some(decoration) = customization.icon.as_deref() {
         assets::set_folder_decoration_icon(image, decoration, &customization.color_or_primary());
     } else if let Some(emoji) = customization.emoji() {

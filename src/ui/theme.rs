@@ -149,6 +149,7 @@ struct AppearancePreferences {
     interface_font: Option<String>,
     element_glow: bool,
     file_icon_colors: FileIconColors,
+    icon_theme: String,
 }
 
 impl AppearancePreferences {
@@ -162,6 +163,7 @@ impl AppearancePreferences {
             interface_font: preferences.interface_font(),
             element_glow: preferences.element_glow(),
             file_icon_colors: preferences.file_icon_colors(),
+            icon_theme: preferences.icon_theme(),
         }
     }
 }
@@ -684,6 +686,7 @@ impl ThemeManager {
         crate::assets::set_catppuccin_flavor(crate::assets::CatppuccinFlavor::for_dark_background(
             dark_background,
         ));
+        crate::assets::icon_theme::select(&self.preferences.icon_theme());
         crate::assets::set_catppuccin_theme_colors(
             self.preferences.file_icon_colors() == FileIconColors::Theme,
         );

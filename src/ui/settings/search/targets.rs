@@ -303,6 +303,12 @@ pub(super) const TARGETS: &[Target] = &[
         aliases: "appearance 3d stl models printing mesh rendered thumbnails icons",
     },
     Target {
+        id: "icon-theme",
+        page: "theme",
+        title: "Icon theme",
+        aliases: "appearance file folder icons pack theme system papirus kora breeze adwaita",
+    },
+    Target {
         id: "file-icon-colors",
         page: "theme",
         title: "File icon colors",

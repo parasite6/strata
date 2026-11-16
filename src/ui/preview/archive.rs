@@ -193,7 +193,10 @@ impl ArchiveBrowser {
             };
             match node {
                 ArchiveNode::Directory(child) => {
-                    set_primary_icon(&icon, icons::FOLDER);
+                    set_primary_icon(
+                        &icon,
+                        crate::assets::icon_theme::folder_icon(icons::FOLDER, None),
+                    );
                     // Archives may contain a file and a directory with the same name.
                     name_label.set_text(&format!("{}/", crumb_name(child)));
                     size_label.set_visible(false);

@@ -33,6 +33,7 @@ impl Default for Preferences {
             reduce_motion: false,
             element_glow: true,
             file_icon_colors: FileIconColors::default(),
+            icon_theme: default_icon_theme(),
             browser_mode: default_browser_mode(),
             browser_density: default_browser_density(),
             browser_density_custom_px: default_density_custom_px(),
@@ -103,6 +104,10 @@ impl Default for Preferences {
             keymap: KeymapOverrides::default(),
         }
     }
+}
+
+pub(super) fn default_icon_theme() -> String {
+    crate::assets::icon_theme::BUILT_IN.to_owned()
 }
 
 pub(super) fn default_enabled() -> bool {

@@ -75,6 +75,7 @@ fn older_preferences_keep_backward_compatible_behavior_defaults() {
     saved.remove("tenxer_mode");
     saved.remove("omarchy_variants");
     saved.remove("file_icon_colors");
+    saved.remove("icon_theme");
     saved.remove("folder_peeking");
     saved.remove("columns_show_sizes");
     saved.remove("language");
@@ -94,6 +95,7 @@ fn older_preferences_keep_backward_compatible_behavior_defaults() {
             tenxer_mode: false,
             omarchy_variants: HashMap::new(),
             file_icon_colors: FileIconColors::Brand,
+            icon_theme: crate::assets::icon_theme::BUILT_IN.into(),
             folder_peeking: false,
             columns_show_sizes: true,
             preview_video_start: 0,

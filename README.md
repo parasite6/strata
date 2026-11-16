@@ -180,6 +180,13 @@ them. Only options supported by your system are offered:
 curl -fsSL https://raw.githubusercontent.com/lgse/strata/main/install.sh | bash
 ```
 
+To install this fork's code instead, run `./install.sh` from a checkout: it
+builds that checkout with `cargo build --release --locked` and installs the result
+with the same integrations. On Arch and Fedora it first installs the build and
+runtime packages with pacman or dnf. `--from-source` does the same from a piped
+install by cloning `parasite6/strata`, and `--from-release` installs upstream's
+signed release even from a checkout.
+
 Use the arrow keys and Enter to choose a setup; Space toggles custom options.
 Small or basic terminals use numbered choices instead. The original block-art logo
 uses its Tokyo Night pale-blue, blue, and violet brand colors; other colors follow

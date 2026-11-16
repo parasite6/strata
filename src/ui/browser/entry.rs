@@ -2,6 +2,7 @@
 
 use crate::adapters::directory_summary::{DirectorySummary, summarize_directory};
 use crate::adapters::gio_file_for_location;
+use crate::assets::icon_theme;
 use crate::assets::icons;
 use crate::model::{EntryKind, FileEntry, MetadataValue};
 use crate::services::{PathMatcher, PathQuery, filter_name_matches, fold_for_search};
@@ -95,10 +96,10 @@ pub(in crate::ui) fn entry_icon(entry: &FileEntry) -> &'static str {
         return crate::assets::icons::X;
     }
     if entry.is_locked_folder() {
-        return crate::assets::icons::FOLDER_LOCK;
+        return icon_theme::named_icon(crate::assets::icons::FOLDER_LOCK, &["folder-locked"]);
     }
     if entry.is_directory() {
-        return crate::assets::icons::FOLDER;
+        return icon_theme::folder_icon(crate::assets::icons::FOLDER, entry.location.native_path());
     }
     icon_for_name(&entry.display_name)
 }
@@ -187,6 +188,10 @@ fn affix_pattern_icon(name: &str) -> Option<&'static str> {
 }
 
 pub(in crate::ui) fn icon_for_name(name: &str) -> &'static str {
+    icon_theme::file_icon(builtin_icon_for_name(name), name)
+}
+
+pub(in crate::ui) fn builtin_icon_for_name(name: &str) -> &'static str {
     let lowered = name.to_ascii_lowercase();
     if let Some(icon) = exact_filename_icon(&lowered) {
         return icon;

@@ -257,7 +257,9 @@ impl SidebarState {
 
     pub(super) fn append_trash_place(self: &Rc<Self>) {
         let location = Location::uri("trash:///");
-        let row = sidebar_button(crate::assets::icons::TRASH, &crate::i18n::tr("Trash"));
+        let icon =
+            crate::assets::icon_theme::named_icon(crate::assets::icons::TRASH, &["user-trash"]);
+        let row = sidebar_button(icon, &crate::i18n::tr("Trash"));
         crate::ui::accessibility::set_description(&row, Some("trash:///"));
         self.add_place_keycap(&row, crate::ui::keys::bindings::GO_TRASH);
         self.bind_place_row(&row, location, PlaceNavigation::Direct);
