@@ -678,6 +678,20 @@ printf '#!/bin/bash\\nprintf "built %s\\\\n" "$*" >> "$CALLS"\\n' > "$target/rel
             self.assertTrue((fixture.home / "data/applications/io.github.lgse.Strata.desktop").is_file())
             self.assertIn("9.9.9", result.stdout)
 
+    def test_fedora_installs_missing_runtime_packages_with_dnf(self) -> None:
+        with InstallerFixture() as fixture:
+            (fixture.root / "os-release").write_text('ID=fedora\nPRETTY_NAME="Fedora Linux"\n', encoding="utf-8")
+            fixture.command("rpm", '''[[ $3 != gtksourceview5 && $3 != /usr/bin/ffmpeg && $3 != gvfs-smb ]]
+''')
+            fixture.command("dnf", 'printf "dnf %s\\n" "$*" >> "$CALLS"\n')
+            result = fixture.run("--non-interactive", "--without-raw", "--without-file-chooser")
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            calls = fixture.recorded_calls()
+            self.assertIn(
+                "dnf install -y --skip-unavailable -- /usr/bin/ffmpeg gtksourceview5 gvfs-smb", calls
+            )
+            self.assertFalse(any(call.startswith("pacman") for call in calls), calls)
+
     def test_custom_setup_starts_with_everything_selected_and_applies_deselections(self) -> None:
         with InstallerFixture() as fixture:
             terminal = fixture.terminal()

@@ -15,7 +15,7 @@ REQUIRED_PACKAGES=(
 RAW_PREVIEW_PACKAGES=(imagemagick libraw dcraw)
 ARCH_BUILD_PACKAGES=(base-devel git pkgconf rust)
 FEDORA_PACKAGES=(
-  bubblewrap desktop-file-utils ffmpeg-free ffmpegthumbnailer fontconfig gstreamer1
+  bubblewrap desktop-file-utils /usr/bin/ffmpeg ffmpegthumbnailer fontconfig gstreamer1
   gstreamer1-plugin-libav gstreamer1-plugins-base gstreamer1-plugins-good gtk4 gtksourceview5
   gvfs hicolor-icon-theme poppler-glib xdg-utils
 )
