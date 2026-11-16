@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-use std::cmp::Ordering;
+use std::{borrow::Borrow, cmp::Ordering};
 
 use crate::model::{FileEntry, MetadataValue, SortDirection, SortKey, ViewPreferences};
 
@@ -38,50 +38,53 @@ pub(super) fn merge_entries(
     merge_sorted(existing, incoming_items, preferences)
 }
 
+/// Binary-searches each incoming entry's place, so a batch costs its own size times
+/// log n comparisons instead of re-keying every listed entry.
 fn merge_sorted(
     existing: Vec<FileEntry>,
     incoming_items: Vec<SortItem>,
     preferences: ViewPreferences,
 ) -> (Vec<FileEntry>, Vec<EntryInsertion>) {
     let precompute_type = preferences.sort_key == SortKey::Type;
-    let mut merged = Vec::with_capacity(existing.len() + incoming_items.len());
-    let mut existing_items = existing
-        .into_iter()
-        .map(|entry| SortItem::new(entry, precompute_type))
-        .peekable();
-    let mut incoming_items = incoming_items.into_iter().peekable();
+    let mut floor = 0;
+    let positions: Vec<usize> = incoming_items
+        .iter()
+        .map(|item| {
+            let position = floor
+                + existing[floor..].partition_point(|entry| {
+                    !takes_incoming(&SortItem::new(entry, precompute_type), item, preferences)
+                });
+            floor = position;
+            position
+        })
+        .collect();
     let mut insertions = Vec::<EntryInsertion>::new();
-
-    while existing_items.peek().is_some() || incoming_items.peek().is_some() {
-        if takes_incoming(existing_items.peek(), incoming_items.peek(), preferences) {
-            let Some(item) = incoming_items.next() else {
-                break;
-            };
-            push_insertion(&mut insertions, merged.len(), item.entry.clone());
-            merged.push(item.entry);
-        } else if let Some(item) = existing_items.next() {
-            merged.push(item.entry);
-        }
+    for (offset, (item, position)) in incoming_items.iter().zip(&positions).enumerate() {
+        push_insertion(&mut insertions, position + offset, item.entry.clone());
     }
-
+    // Appended, then rotated into place from the back: about n + k² moves, no new buffer.
+    let mut merged = existing;
+    let mut end = merged.len();
+    merged.extend(incoming_items.into_iter().map(|item| item.entry));
+    for (index, &position) in positions.iter().enumerate().rev() {
+        if position < end {
+            merged[position..end + index + 1].rotate_right(index + 1);
+        }
+        end = position;
+    }
     (merged, insertions)
 }
 
-fn takes_incoming(
-    existing: Option<&SortItem>,
-    incoming: Option<&SortItem>,
+fn takes_incoming<E: Borrow<FileEntry>>(
+    existing: &SortItem<E>,
+    incoming: &SortItem,
     preferences: ViewPreferences,
 ) -> bool {
-    match (existing, incoming) {
-        (Some(left), Some(right)) => {
-            if preferences.sort_key == SortKey::Unsorted {
-                compare_sort_items(right, left, preferences) == Ordering::Less
-            } else {
-                compare_sort_items(right, left, preferences) != Ordering::Greater
-            }
-        }
-        (None, Some(_)) => true,
-        _ => false,
+    let ordering = compare_sort_items(incoming, existing, preferences);
+    if preferences.sort_key == SortKey::Unsorted {
+        ordering == Ordering::Less
+    } else {
+        ordering != Ordering::Greater
     }
 }
 
@@ -149,16 +152,17 @@ fn compare_with_folded(
     )
 }
 
-struct SortItem {
-    entry: FileEntry,
+struct SortItem<E: Borrow<FileEntry> = FileEntry> {
+    entry: E,
     folded_name: FoldedName,
     entry_type: Option<crate::services::EntryType>,
 }
 
-impl SortItem {
-    fn new(entry: FileEntry, precompute_type: bool) -> Self {
-        let folded_name = FoldedName::new(&entry.display_name);
-        let entry_type = precompute_type.then(|| crate::services::entry_type(&entry));
+impl<E: Borrow<FileEntry>> SortItem<E> {
+    fn new(entry: E, precompute_type: bool) -> Self {
+        let file = entry.borrow();
+        let folded_name = FoldedName::new(&file.display_name);
+        let entry_type = precompute_type.then(|| crate::services::entry_type(file));
         Self {
             entry,
             folded_name,
@@ -167,12 +171,17 @@ impl SortItem {
     }
 }
 
-fn compare_sort_items(left: &SortItem, right: &SortItem, preferences: ViewPreferences) -> Ordering {
+fn compare_sort_items<L: Borrow<FileEntry>, R: Borrow<FileEntry>>(
+    left: &SortItem<L>,
+    right: &SortItem<R>,
+    preferences: ViewPreferences,
+) -> Ordering {
+    let (left_entry, right_entry) = (left.entry.borrow(), right.entry.borrow());
     if preferences.sort_key == SortKey::DeviceOrder {
         return Ordering::Equal;
     }
     if preferences.folders_first {
-        let directory_order = right.entry.is_directory().cmp(&left.entry.is_directory());
+        let directory_order = right_entry.is_directory().cmp(&left_entry.is_directory());
         if directory_order != Ordering::Equal {
             return directory_order;
         }
@@ -183,34 +192,34 @@ fn compare_sort_items(left: &SortItem, right: &SortItem, preferences: ViewPrefer
     }
     if preferences.sort_key == SortKey::Created {
         return compare_created(
-            &left.entry.created_unix_seconds,
-            &right.entry.created_unix_seconds,
+            &left_entry.created_unix_seconds,
+            &right_entry.created_unix_seconds,
             preferences.sort_direction,
         )
         .then_with(|| {
             compare_configured_names(
-                &left.entry.display_name,
-                &right.entry.display_name,
+                &left_entry.display_name,
+                &right_entry.display_name,
                 preferences.name_comparison,
             )
         })
-        .then_with(|| left.entry.location.compare(&right.entry.location));
+        .then_with(|| left_entry.location.compare(&right_entry.location));
     }
 
     let ordering = match preferences.sort_key {
         SortKey::DeviceOrder | SortKey::Unsorted | SortKey::Created => Ordering::Equal,
         SortKey::Recency => compare_metadata(
-            &left.entry.recent_unix_seconds,
-            &right.entry.recent_unix_seconds,
+            &left_entry.recent_unix_seconds,
+            &right_entry.recent_unix_seconds,
         ),
         SortKey::Name => compare_names(
-            (&left.folded_name, &left.entry.display_name),
-            (&right.folded_name, &right.entry.display_name),
+            (&left.folded_name, &left_entry.display_name),
+            (&right.folded_name, &right_entry.display_name),
             preferences.name_comparison,
         ),
         SortKey::Extension => compare_extensions(
-            &left.entry.display_name,
-            &right.entry.display_name,
+            &left_entry.display_name,
+            &right_entry.display_name,
             preferences.name_comparison,
         ),
         SortKey::Type => {
@@ -224,10 +233,10 @@ fn compare_sort_items(left: &SortItem, right: &SortItem, preferences: ViewPrefer
                 .expect("Type sorting precomputes entry types");
             compare_entry_type_values(left_type, right_type)
         }
-        SortKey::Size => compare_metadata(&left.entry.size, &right.entry.size),
+        SortKey::Size => compare_metadata(&left_entry.size, &right_entry.size),
         SortKey::Modified => compare_metadata(
-            &left.entry.modified_unix_seconds,
-            &right.entry.modified_unix_seconds,
+            &left_entry.modified_unix_seconds,
+            &right_entry.modified_unix_seconds,
         ),
     };
     let ordering = match preferences.sort_direction {
@@ -237,12 +246,12 @@ fn compare_sort_items(left: &SortItem, right: &SortItem, preferences: ViewPrefer
     ordering
         .then_with(|| {
             compare_names(
-                (&left.folded_name, &left.entry.display_name),
-                (&right.folded_name, &right.entry.display_name),
+                (&left.folded_name, &left_entry.display_name),
+                (&right.folded_name, &right_entry.display_name),
                 preferences.name_comparison,
             )
         })
-        .then_with(|| left.entry.location.compare(&right.entry.location))
+        .then_with(|| left_entry.location.compare(&right_entry.location))
 }
 
 pub(super) fn compare_entries(

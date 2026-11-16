@@ -3,10 +3,11 @@
 //! A column's list models and the selection it mirrors into the browser.
 
 use super::super::ColumnHits;
+use crate::model::FileEntry;
 use crate::services::SearchItem;
 use crate::ui::browser::ViewState;
 use crate::ui::browser::collection::{ViewMap, apply_selection_plan, bitset_positions};
-use crate::ui::browser::entry::{entry_filter, entry_model_value};
+use crate::ui::browser::entry::{entry_filter, entry_filter_value, entry_model_value};
 use crate::ui::entry_list_model::EntryListModel;
 use crate::ui::search_session::SearchSession;
 use gtk::prelude::*;
@@ -139,15 +140,19 @@ impl SelectionSync {
 
 impl ViewState {
     fn column_entry_model(&self, depth: usize) -> EntryListModel {
-        let browser_for_model = self.browser.clone();
-        EntryListModel::new(Rc::new(move |position| {
-            let position = position as usize;
-            browser_for_model
-                .with_entries(depth, position..position.saturating_add(1), |entries| {
-                    entries.first().map(entry_model_value)
-                })
-                .flatten()
-        }))
+        let entry_value = |browser: Rc<crate::app::Browser>, value: fn(&FileEntry) -> String| {
+            Rc::new(move |position: u32| {
+                let position = position as usize;
+                browser
+                    .with_entries(depth, position..position.saturating_add(1), |entries| {
+                        entries.first().map(value)
+                    })
+                    .flatten()
+            })
+        };
+        let model = EntryListModel::new(entry_value(self.browser.clone(), entry_model_value));
+        model.set_filter_resolve(entry_value(self.browser.clone(), entry_filter_value));
+        model
     }
 
     pub(super) fn column_models(self: &Rc<Self>, depth: usize) -> ColumnModels {

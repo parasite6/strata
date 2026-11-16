@@ -34,6 +34,15 @@ pub(super) fn entry_responds_to_preview_click(entry: &FileEntry, previews_enable
 }
 
 pub(in crate::ui) fn entry_model_value(entry: &FileEntry) -> String {
+    model_value(entry, crate::services::entry_type(entry).description())
+}
+
+/// The model value without its type group, which filtering never reads.
+pub(in crate::ui) fn entry_filter_value(entry: &FileEntry) -> String {
+    model_value(entry, "")
+}
+
+fn model_value(entry: &FileEntry, group: &str) -> String {
     let kind = if entry.is_broken_symbolic_link() {
         'x'
     } else if entry.is_directory() {
@@ -46,8 +55,6 @@ pub(in crate::ui) fn entry_model_value(entry: &FileEntry) -> String {
         'f'
     };
     let hidden = if entry.is_hidden { 'h' } else { 'v' };
-    let entry_type = crate::services::entry_type(entry);
-    let group = entry_type.description();
     let name = entry.display_name.as_str();
     let mut value = String::with_capacity(group.len() + name.len() + 3);
     value.push(kind);

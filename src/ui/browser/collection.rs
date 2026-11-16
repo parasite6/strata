@@ -628,7 +628,7 @@ fn rebuild_position_map(
     let mut forward = Vec::new();
     let mut reverse = vec![NO_FILTERED_POSITION; n_source];
     for (source_position, filtered_position) in reverse.iter_mut().enumerate() {
-        let Some(text) = source.value(source_position as u32) else {
+        let Some(text) = source.filter_value(source_position as u32) else {
             continue;
         };
         if entry_matches(&text, show_hidden, query) {
@@ -717,11 +717,35 @@ impl ViewMap {
         }
         let mut cache = self.cache.borrow_mut();
         let generation = self.generation.get();
-        if cache.query != *query || cache.generation != generation {
+        let stale = cache.query != *query || cache.generation != generation;
+        if stale && query.is_empty() {
+            // Only dotfiles are filtered, so the rows above decide the position.
+            return self
+                .count_shown_before(source_position)
+                .map(|position| position + self.placeholder_count());
+        }
+        if stale {
             *cache = rebuild_position_map(&self.source, &query, self.show_hidden.get(), generation);
         }
         let position = *cache.reverse.get(source_position)?;
         (position != NO_FILTERED_POSITION).then_some(position + self.placeholder_count())
+    }
+
+    /// `None` when the row at `source_position` is itself filtered out or absent.
+    fn count_shown_before(&self, source_position: usize) -> Option<u32> {
+        let shown = |position: usize| {
+            self.source
+                .filter_value(position as u32)
+                .map(|text| entry_matches(&text, false, ""))
+        };
+        if !shown(source_position)? {
+            return None;
+        }
+        Some(
+            (0..source_position)
+                .filter(|&position| shown(position) == Some(true))
+                .count() as u32,
+        )
     }
 
     pub(crate) fn source_positions(&self, visible_positions: &[u32]) -> Vec<(u32, usize)> {

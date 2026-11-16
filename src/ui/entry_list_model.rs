@@ -17,6 +17,7 @@ mod imp {
     pub struct EntryListModel {
         pub count: Cell<u32>,
         pub resolve: RefCell<Option<ResolveFn>>,
+        pub filter_resolve: RefCell<Option<ResolveFn>>,
     }
 
     #[glib::object_subclass]
@@ -57,6 +58,21 @@ impl EntryListModel {
         let model: Self = glib::Object::new();
         model.imp().resolve.replace(Some(resolve));
         model
+    }
+
+    /// Registers a cheaper value carrying only what filtering reads, for scans of every row.
+    pub(crate) fn set_filter_resolve(&self, resolve: ResolveFn) {
+        self.imp().filter_resolve.replace(Some(resolve));
+    }
+
+    pub(crate) fn filter_value(&self, position: u32) -> Option<String> {
+        if position >= self.imp().count.get() {
+            return None;
+        }
+        match self.imp().filter_resolve.borrow().clone() {
+            Some(resolve) => resolve(position),
+            None => self.value(position),
+        }
     }
 
     pub(crate) fn value(&self, position: u32) -> Option<String> {
