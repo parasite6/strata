@@ -224,14 +224,24 @@ impl PreviewState {
         )
     }
 
-    /// Filter results hide the listing, so a focus event can name a row no one sees.
-    pub(super) fn hidden_by_filter_results(&self, entry: &FileEntry) -> bool {
+    fn bound_browser(&self) -> Option<BrowserView> {
         self.sizing
             .binding
             .borrow()
             .as_ref()
             .and_then(|binding| binding.browser.upgrade())
+    }
+
+    /// Filter results hide the listing, so a focus event can name a row no one sees.
+    pub(super) fn hidden_by_filter_results(&self, entry: &FileEntry) -> bool {
+        self.bound_browser()
             .is_some_and(|browser| browser.hidden_by_filter_results(&entry.location))
+    }
+
+    /// The listing losing focus says nothing about the filter results drawn over it.
+    pub(super) fn results_replace_listing(&self) -> bool {
+        self.bound_browser()
+            .is_some_and(|browser| browser.results_replace_listing())
     }
 
     pub(super) fn slot_is_empty(&self) -> bool {

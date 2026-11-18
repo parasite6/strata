@@ -188,7 +188,7 @@ impl PreviewDrawer {
             | BrowserEvent::SelectionSynced {
                 depth,
                 focused: None,
-            } if self.is_enabled() => {
+            } if self.is_enabled() && !self.state.results_replace_listing() => {
                 self.state.lend_slot_to_child(browser, *depth, None);
                 self.clear_target()
             }
