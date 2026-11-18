@@ -1,0 +1,72 @@
+name: Merge upstream main
+
+on:
+  schedule:
+    - cron: "23 7 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: fork-merge-upstream
+  cancel-in-progress: false
+
+jobs:
+  merge:
+    name: Merge lgse/strata main into main
+    if: github.repository == 'parasite6/strata'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          fetch-depth: 0
+          # GITHUB_TOKEN cannot push commits that touch .github/workflows;
+          # a fine-grained token with Contents and Workflows write can.
+          token: ${{ secrets.SYNC_TOKEN || github.token }}
+
+      - name: Merge upstream
+        env:
+          UPSTREAM_REPO: https://github.com/lgse/strata.git
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          # Fetched by URL with no remote, so this job can never push to lgse/strata.
+          git fetch --no-tags "${UPSTREAM_REPO}" "+refs/heads/main:refs/remotes/upstream/main"
+
+          behind="$(git rev-list --count HEAD..upstream/main)"
+          if [ "${behind}" -eq 0 ]; then
+            echo "Already up to date with upstream." >> "${GITHUB_STEP_SUMMARY}"
+            exit 0
+          fi
+
+          if ! git merge --no-edit upstream/main; then
+            {
+              echo "## Upstream merge needs a hand"
+              echo "Merging ${behind} upstream commits conflicts in:"
+              git diff --name-only --diff-filter=U | sed 's/^/- `/; s/$/`/'
+              echo
+              echo "Nothing was pushed. Merge locally: \`git fetch upstream && git merge upstream/main\`."
+            } >> "${GITHUB_STEP_SUMMARY}"
+            git merge --abort
+            exit 1
+          fi
+
+          if ! git push origin HEAD:refs/heads/main; then
+            {
+              echo "## Upstream merge could not be pushed"
+              echo "The merge was clean but the push was refused. If upstream changed"
+              echo "\`.github/workflows\`, add a \`SYNC_TOKEN\` secret (fine-grained token,"
+              echo "this repository only, Contents and Workflows: read and write)."
+            } >> "${GITHUB_STEP_SUMMARY}"
+            exit 1
+          fi
+
+          {
+            echo "Merged ${behind} upstream commits:"
+            git log --oneline --no-merges HEAD^1..HEAD^2 | sed 's/^/- /'
+          } >> "${GITHUB_STEP_SUMMARY}"
