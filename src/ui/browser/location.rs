@@ -18,7 +18,7 @@ mod mount_errors;
 mod mounting;
 mod unlock_progress;
 mod volumes;
-pub(super) use breadcrumbs::is_breadcrumb_button_target;
+pub(super) use breadcrumbs::{is_breadcrumb_button_target, repaint_trail};
 pub(super) use dialogs::MountCredentials;
 pub(super) use mount_errors::MountStrategy;
 pub(super) use unlock_progress::UnlockProgressSlot;

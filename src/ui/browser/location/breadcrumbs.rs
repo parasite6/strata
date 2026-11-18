@@ -46,6 +46,15 @@ pub(in crate::ui::browser) fn is_breadcrumb_button_target(mut target: gtk::Widge
     }
 }
 
+/// The trail keeps its size when crumbs change, so GTK can leave old crumbs painted.
+pub(in crate::ui::browser) fn repaint_trail(breadcrumbs: &impl IsA<gtk::Widget>) {
+    let trail = breadcrumbs.ancestor(gtk::Overlay::static_type());
+    trail
+        .as_ref()
+        .unwrap_or(breadcrumbs.upcast_ref())
+        .queue_draw();
+}
+
 fn is_filesystem_root(location: &Location) -> bool {
     location
         .native_path()
@@ -334,6 +343,7 @@ impl ViewState {
             self.location_entry.set_text(&location.display_path());
         }
         self.breadcrumb_reveal_pending.set(true);
+        repaint_trail(&self.breadcrumbs);
     }
 
     fn hierarchy_item(
