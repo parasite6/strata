@@ -11,6 +11,7 @@
 {"sleep":600,"variants":["two-clicks"]}
 {"click":{"search_result":"todo.txt"},"count":2,"variants":["two-clicks"]}
 {"fs":{"path":"$environment/filtered-launches","lines":{"at_least":1}},"message":"the file launch"}
+{"expect":{"preview":"todo"},"timeout_ms":1000,"message":"the double-clicked result to stay previewed","variants":["two-clicks"]}
 {"expect":{"preview":null},"timeout_ms":0,"message":"a one-click file to launch without a preview","variants":["one-click"]}
 {"key":"ctrl+f"}
 {"wait":{"field":{"of":"field","focused":true}},"message":"focus to return to the filter"}

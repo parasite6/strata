@@ -755,6 +755,24 @@ impl BrowserView {
             .is_some_and(|target| target.results_view().is_some())
     }
 
+    /// True while filter results hide the listing and `location` is not among them.
+    pub(in crate::ui) fn hidden_by_filter_results(
+        &self,
+        location: &crate::model::Location,
+    ) -> bool {
+        let Some(target) = self
+            .filter_target()
+            .filter(|target| target.results_view().is_some())
+        else {
+            return false;
+        };
+        !target.results().is_some_and(|results| {
+            results
+                .iter()
+                .any(|item| super::collection::search_result_entry(item).location == *location)
+        })
+    }
+
     pub(super) fn place_found_result(&self, position: u32, take_focus: bool) {
         let Some(hits) = self.filter_target().and_then(|target| target.hits()) else {
             return;

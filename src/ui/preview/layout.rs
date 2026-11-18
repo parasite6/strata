@@ -224,6 +224,16 @@ impl PreviewState {
         )
     }
 
+    /// Filter results hide the listing, so a focus event can name a row no one sees.
+    pub(super) fn hidden_by_filter_results(&self, entry: &FileEntry) -> bool {
+        self.sizing
+            .binding
+            .borrow()
+            .as_ref()
+            .and_then(|binding| binding.browser.upgrade())
+            .is_some_and(|browser| browser.hidden_by_filter_results(&entry.location))
+    }
+
     pub(super) fn slot_is_empty(&self) -> bool {
         self.current.borrow().is_none() && !self.reserves_empty_preview()
     }

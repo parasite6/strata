@@ -201,6 +201,12 @@ impl PreviewDrawer {
 
     fn follow_focus(&self, browser: &Browser, depth: usize, position: usize) {
         let entry = browser.entry_at(depth, position);
+        if entry
+            .as_ref()
+            .is_some_and(|entry| self.state.hidden_by_filter_results(entry))
+        {
+            return;
+        }
         if let Some(entry) = entry.clone().and_then(|entry| preview_target(Some(entry))) {
             self.show_after_focus_change(entry, Some(depth));
         } else {
