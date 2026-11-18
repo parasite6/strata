@@ -160,6 +160,16 @@ fn restart_for_gtk_environment(
     gtk::glib::ExitCode::FAILURE
 }
 
+#[cfg(feature = "qa")]
+fn is_qa_launch(mode: LaunchMode) -> bool {
+    mode == LaunchMode::Qa
+}
+
+#[cfg(not(feature = "qa"))]
+fn is_qa_launch(_mode: LaunchMode) -> bool {
+    false
+}
+
 fn should_select_cairo(
     supplied_renderer: Option<&std::ffi::OsStr>,
     choice: ui::preferences::InterfaceRenderer,
@@ -335,7 +345,7 @@ fn main() -> gtk::glib::ExitCode {
         service_debug_environment(&arguments, std::env::var_os("GDK_DEBUG").as_deref());
     // GSK's damage regions miss glyph pixels outside the text's ink extents,
     // leaving stale marks above changed text; full redraws clear them.
-    let full_redraw = std::env::var_os("GSK_DEBUG").is_none() && mode != LaunchMode::Qa;
+    let full_redraw = std::env::var_os("GSK_DEBUG").is_none() && !is_qa_launch(mode);
     if select_cairo || full_redraw || has_desktop_theme_override() || service_debug.is_some() {
         // Replies already own the original stdout, which a restart would lose.
         #[cfg(feature = "qa")]
