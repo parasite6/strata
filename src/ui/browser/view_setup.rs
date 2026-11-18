@@ -118,7 +118,6 @@ fn install_breadcrumb_reveal(breadcrumb_scroller: &gtk::ScrolledWindow, pending:
                 if let Some(scroller) = scroller.upgrade() {
                     let adjustment = scroller.hadjustment();
                     adjustment.set_value(adjustment.upper() - adjustment.page_size());
-                    super::location::repaint_trail(&scroller);
                 }
             })));
         }
