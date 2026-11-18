@@ -205,19 +205,7 @@ fn pane_header(chrome: &PaneChrome) -> (gtk::Box, gtk::Spinner, gtk::Image) {
     header.append(&spinner);
     chrome.actions.set_valign(gtk::Align::Center);
     header.append(&chrome.actions);
-    repaint_on_visibility(&header, spinner.upcast_ref());
-    repaint_on_visibility(&header, truncated_hint.upcast_ref());
     (header, spinner, truncated_hint)
-}
-
-/// Showing or hiding a header child can shift the title without GTK clearing its old pixels.
-fn repaint_on_visibility(header: &gtk::Box, child: &gtk::Widget) {
-    let header = header.downgrade();
-    child.connect_visible_notify(move |_| {
-        if let Some(header) = header.upgrade() {
-            header.queue_draw();
-        }
-    });
 }
 
 struct StatusPage {

@@ -397,6 +397,12 @@ hints metrics as well, so the extents match the raster, and it follows the
 desktop's antialiasing and hint-style settings. This is process-local and does
 not change the desktop setting.
 
+Strata also starts with `GSK_DEBUG=full-redraw` unless the caller sets
+`GSK_DEBUG`. GSK's damage regions follow text ink extents, which some glyphs
+(JetBrains Mono at small sizes) overshoot, so edited or relabelled text left
+stale pixels above it. Like Cairo selection, applications Strata starts may
+inherit the variable.
+
 ## Element glow
 
 In **Settings → Appearance → Effects**, turn off **Element glow** to remove

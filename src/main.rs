@@ -125,6 +125,7 @@ fn service_debug_environment(
 fn restart_for_gtk_environment(
     arguments: &[OsString],
     select_cairo: bool,
+    full_redraw: bool,
     service_debug: Option<OsString>,
 ) -> gtk::glib::ExitCode {
     let Ok(executable) = std::env::current_exe() else {
@@ -150,6 +151,9 @@ fn restart_for_gtk_environment(
         command
             .env("GSK_RENDERER", "cairo")
             .env(CAIRO_SELECTED_BY_STRATA, "1");
+    }
+    if full_redraw {
+        command.env("GSK_DEBUG", "full-redraw");
     }
     let error = command.exec();
     eprintln!("Unable to restart Strata: {error}");
@@ -238,7 +242,7 @@ fn main() -> gtk::glib::ExitCode {
             let service_debug =
                 service_debug_environment(&arguments, std::env::var_os("GDK_DEBUG").as_deref());
             if has_desktop_theme_override() || service_debug.is_some() {
-                return restart_for_gtk_environment(&arguments, false, service_debug);
+                return restart_for_gtk_environment(&arguments, false, false, service_debug);
             }
             restart_with_local_vfs_if_gvfs_is_unresponsive();
             let _volumes = gio::VolumeMonitor::get();
@@ -329,14 +333,17 @@ fn main() -> gtk::glib::ExitCode {
     );
     let service_debug =
         service_debug_environment(&arguments, std::env::var_os("GDK_DEBUG").as_deref());
-    if select_cairo || has_desktop_theme_override() || service_debug.is_some() {
+    // GSK's damage regions miss glyph pixels outside the text's ink extents,
+    // leaving stale marks above changed text; full redraws clear them.
+    let full_redraw = std::env::var_os("GSK_DEBUG").is_none() && mode != LaunchMode::Qa;
+    if select_cairo || full_redraw || has_desktop_theme_override() || service_debug.is_some() {
         // Replies already own the original stdout, which a restart would lose.
         #[cfg(feature = "qa")]
         if qa_session.is_some() {
             eprintln!("--qa needs GSK_RENDERER set and GTK_THEME unset");
             return gtk::glib::ExitCode::FAILURE;
         }
-        return restart_for_gtk_environment(&arguments, select_cairo, service_debug);
+        return restart_for_gtk_environment(&arguments, select_cairo, full_redraw, service_debug);
     }
 
     if let Err(error) = portal_setup::refresh_stale_portal() {
