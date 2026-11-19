@@ -63,7 +63,7 @@ unrar_sys = "0.5.8"
 # The update downloader implements `ureq::unversioned` transport traits, which
 # may change in a minor release.
 ureq = { version = "~3.4", features = ["json"] }
-zip = "9.0.4"
+zip = "9.0.5"
 zstd = "0.14.3"
 
 strata-core = { version = "0.0.0", path = "crates/strata-core", default-features = false }
