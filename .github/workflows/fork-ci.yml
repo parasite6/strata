@@ -1,0 +1,76 @@
+name: Fork CI
+
+# Upstream's ci.yml needs Blacksmith runners and is disabled on this fork. Kept as a
+# separate file so the daily upstream merge never conflicts with it.
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: fork-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: Format, lint, and build
+    if: github.repository == 'parasite6/strata'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    env:
+      STRATA_CONTAINER_ENGINE: docker
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up image inspection
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+        with:
+          driver: docker
+
+      - name: Get upstream's published test image
+        id: environment
+        run: |
+          image="$(python3 scripts/image_base.py ensure --engine docker)"
+          echo "image=$image" >> "$GITHUB_OUTPUT"
+          echo "inputs=$(python3 scripts/image_inputs.py image-key)" >> "$GITHUB_OUTPUT"
+
+      - name: Restore Cargo cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            target/quality-container/cargo
+            target/quality-container/build
+          key: fork-ci-v1-${{ steps.environment.outputs.inputs }}-${{ hashFiles('Cargo.toml', 'Cargo.lock') }}-${{ github.sha }}
+          restore-keys: |
+            fork-ci-v1-${{ steps.environment.outputs.inputs }}-${{ hashFiles('Cargo.toml', 'Cargo.lock') }}-
+
+      - name: Check formatting
+        env:
+          STRATA_QUALITY_IMAGE: ${{ steps.environment.outputs.image }}
+        run: ./scripts/quality.sh fmt
+
+      - name: Run Clippy
+        env:
+          STRATA_QUALITY_IMAGE: ${{ steps.environment.outputs.image }}
+        run: ./scripts/quality.sh clippy
+
+      - name: Build the app as the installer does
+        env:
+          IMAGE: ${{ steps.environment.outputs.image }}
+        run: |
+          docker run --rm --user "$(id -u):$(id -g)" \
+            --tmpfs /tmp:rw,exec,nosuid,nodev,size=2g,mode=1777 \
+            --mount "type=bind,source=$PWD,target=/workspace" \
+            --mount "type=bind,source=$PWD/target/quality-container/accounts-$(id -u)-$(id -g)/passwd,target=/etc/passwd,readonly" \
+            --mount "type=bind,source=$PWD/target/quality-container/accounts-$(id -u)-$(id -g)/group,target=/etc/group,readonly" \
+            --workdir /workspace \
+            --env HOME=/tmp/strata-quality-home \
+            --env CARGO_HOME=/workspace/target/quality-container/cargo \
+            --env CARGO_TARGET_DIR=/workspace/target/quality-container/build \
+            --env CARGO_PROFILE_DEV_DEBUG=0 --env CARGO_INCREMENTAL=0 \
+            "$IMAGE" bash -euc 'mkdir -p "$HOME" && cargo check --locked --workspace'
