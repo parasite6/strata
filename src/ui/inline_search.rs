@@ -71,6 +71,7 @@ struct State {
     entry: glib::WeakRef<gtk::Entry>,
     stack: gtk::Stack,
     status: gtk::Label,
+    coverage: gtk::Label,
     collection: ResultCollection,
     enter: super::enter_target::EnterTarget,
     session: super::search_session::SearchSession,
@@ -451,6 +452,7 @@ impl InlineSearch {
             });
             if pruned.is_empty() {
                 state.status.set_text(&crate::i18n::tr("No matching files"));
+                state.coverage.set_visible(false);
                 state.set_empty_state(true);
                 state.status.set_visible(true);
             }
@@ -601,6 +603,7 @@ fn show_directory_listing(state: &State) {
     }
     state.updating.set(true);
     state.collection.clear();
+    state.coverage.set_visible(false);
     state.set_empty_state(false);
     state.stack.set_visible_child_name("files");
     state.updating.set(false);
@@ -694,11 +697,21 @@ pub(super) fn wrap(
     status.set_can_target(false);
     overlay.add_overlay(&status);
     overlay.set_measure_overlay(&status, false);
-    stack.add_named(&overlay, Some("search"));
+    let coverage = gtk::Label::new(None);
+    coverage.add_css_class("status-message");
+    coverage.set_wrap(true);
+    coverage.set_wrap_mode(gtk::pango::WrapMode::WordChar);
+    coverage.set_justify(gtk::Justification::Center);
+    coverage.set_visible(false);
+    let page = gtk::Box::new(gtk::Orientation::Vertical, 0);
+    page.append(&coverage);
+    page.append(&overlay);
+    stack.add_named(&page, Some("search"));
     let state = Rc::new(State {
         entry: entry.downgrade(),
         stack: stack.clone(),
         status,
+        coverage,
         collection,
         enter,
         session: super::search_session::SearchSession::default(),
@@ -833,6 +846,7 @@ pub(super) fn wrap(
             }
             if state.collection.sorted.n_items() == 0 {
                 state.status.set_text(&crate::i18n::tr("Searching…"));
+                state.coverage.set_visible(false);
                 state.set_empty_state(true);
                 state.status.set_visible(true);
             }
@@ -866,10 +880,13 @@ pub(super) fn wrap(
                     );
                     let is_empty = items.is_empty();
                     state.set_empty_state(is_empty);
-                    state
-                        .status
-                        .set_visible(is_empty || batch.coverage.is_partial());
-                    state.status.set_text(&if batch.coverage.is_partial() {
+                    let partial = batch.coverage.is_partial();
+                    state.status.set_visible(is_empty);
+                    state.coverage.set_visible(partial && !is_empty);
+                    if partial {
+                        state.coverage.set_text(&batch.coverage.message());
+                    }
+                    state.status.set_text(&if partial {
                         batch.coverage.message()
                     } else if batch.indexing {
                         crate::i18n::tr("Searching…")
