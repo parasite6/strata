@@ -2264,6 +2264,44 @@ scrollbar.horizontal > range > trough > slider {
   margin-bottom: 0;
 }
 
+/* The text preview uses a classic editor scrollbar: always shown, wider, muted. */
+.preview-text-scroll > scrollbar {
+  background: alpha(@strata_border, 0.12);
+}
+
+.preview-text-scroll > scrollbar.vertical,
+.preview-text-scroll > scrollbar.vertical > range > trough,
+.preview-text-scroll > scrollbar.vertical > range > trough > slider {
+  min-width: 14px;
+}
+
+.preview-text-scroll > scrollbar.horizontal,
+.preview-text-scroll > scrollbar.horizontal > range > trough,
+.preview-text-scroll > scrollbar.horizontal > range > trough > slider {
+  min-height: 14px;
+}
+
+.preview-text-scroll > scrollbar > range > trough,
+.preview-text-scroll > scrollbar:hover > range > trough,
+.preview-text-scroll > scrollbar.dragging > range > trough {
+  background: transparent;
+  border-radius: 0;
+}
+
+.preview-text-scroll > scrollbar > range > trough > slider {
+  background: alpha(@strata_text, 0.22);
+  border-radius: 0;
+}
+
+.preview-text-scroll > scrollbar > range > trough > slider:hover {
+  background: alpha(@strata_text, 0.38);
+}
+
+.preview-text-scroll > scrollbar.dragging > range > trough > slider,
+.preview-text-scroll > scrollbar > range > trough > slider:active {
+  background: alpha(@strata_accent, 0.75);
+}
+
 /* The mode scrollers need an opaque base to conceal the sidebar paned handle.
    Layer the path bar's faint track over it instead of losing the bezel. */
 .mode-scroll scrollbar.horizontal {

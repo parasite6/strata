@@ -73,8 +73,10 @@ impl SourcePreviewView {
             .child(&self.view)
             .hscrollbar_policy(text_hscroll_policy(wrapped))
             .vscrollbar_policy(gtk::PolicyType::Automatic)
+            .overlay_scrolling(false)
             .hexpand(true)
             .vexpand(true)
+            .css_classes(["preview-text-scroll"])
             .build();
         self.scroll.replace(Some(scroll.clone()));
         (scroll.upcast(), false)
