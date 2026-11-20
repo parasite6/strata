@@ -28,6 +28,8 @@
 {"wait":{"dialog":true},"message":"the Compress dialog","modes":["columns"]}
 {"click":{"role":"toggle button","name":"Password protected"},"modes":["columns"]}
 {"wait":{"all":[{"present":{"role":"text","name":"Archive name"}},{"present":{"role":"password text","name":"Password"}},{"present":{"role":"password text","name":"Confirm password"}}]},"message":"a Compress field is unnamed","modes":["columns"]}
+{"click":{"role":"toggle button","name":"7Z"},"modes":["columns"]}
+{"wait":{"all":[{"present":{"role":"combo box","name":"Compression level"}},{"present":{"role":"check box","name":"Encrypt file names"}}]},"message":"a Compress option is unnamed","modes":["columns"]}
 {"key":"Escape","modes":["columns"]}
 {"key":"ctrl+2","modes":["icons"]}
 {"wait":{"present":{"role":"button","name":"Thumbnail size"}},"message":"the Icons header","modes":["icons"]}

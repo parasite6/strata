@@ -512,8 +512,9 @@ fn every_operation_releases_a_preview_of_what_it_changes_before_changing_it()
                     destination: Location::local(root),
                     archive_name: "archive".to_owned(),
                     conflict: TransferConflict::ReplaceExisting,
-                    format: crate::services::ArchiveFormat::Zip,
-                    password: None,
+                    settings: crate::services::ArchiveSettings::new(
+                        crate::services::ArchiveFormat::Zip,
+                    ),
                 },
                 emit,
             ),

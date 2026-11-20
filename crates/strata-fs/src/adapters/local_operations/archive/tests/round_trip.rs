@@ -77,7 +77,7 @@ fn round_trip(format: ArchiveFormat) -> Result<(), Box<dyn Error>> {
     let archives = root.path().join("archives");
     fs::create_dir(&archives)?;
     let events = run_compression(CompressRequest {
-        format,
+        settings: ArchiveSettings::new(format),
         ..zip_request(&source, &archives, "source", TransferConflict::FailIfExists)
     });
     assert!(

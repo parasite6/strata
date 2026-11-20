@@ -1042,8 +1042,7 @@ fn completed_operations_refresh_only_columns_without_a_monitor() {
                     location.clone(),
                     "archive".to_owned(),
                     TransferConflict::FailIfExists,
-                    crate::services::ArchiveFormat::Zip,
-                    None,
+                    crate::services::ArchiveSettings::new(crate::services::ArchiveFormat::Zip),
                 ),
             }
 

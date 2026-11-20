@@ -188,3 +188,86 @@ fn gzip_policy_preserves_one_stream_and_compresses_mixed_payloads() -> Result<()
     }
     Ok(())
 }
+
+#[test]
+fn store_keeps_payloads_raw_and_other_levels_compress() -> Result<(), Box<dyn Error>> {
+    let root = tempfile::tempdir()?;
+    let payload = b"compressible line of text\n".repeat(4096);
+    let source = root.path().join("notes.txt");
+    fs::write(&source, &payload)?;
+    let entries = [source];
+    let expected = BTreeMap::from([(
+        PathBuf::from("notes.txt"),
+        CompressedEntry::File(payload.clone()),
+    )]);
+    for format in [
+        ArchiveFormat::Zip,
+        ArchiveFormat::SevenZ,
+        ArchiveFormat::TarGz,
+    ] {
+        for level in [
+            CompressionLevel::Store,
+            CompressionLevel::Fastest,
+            CompressionLevel::Normal,
+            CompressionLevel::Ultra,
+        ] {
+            let archive = root.path().join("output");
+            write_archive_with(
+                &archive,
+                &entries,
+                &ArchiveSettings::new(format).with_level(level),
+            )?;
+            assert_eq!(read_compressed_entries(&archive, format, None)?, expected);
+            let size = fs::metadata(&archive)?.len() as usize;
+            if level == CompressionLevel::Store {
+                assert!(size >= payload.len(), "{format:?} stored {size} bytes");
+                if format == ArchiveFormat::SevenZ {
+                    assert_seven_z_methods(&archive, None, "notes.txt", true)?;
+                }
+            } else {
+                assert!(
+                    size < payload.len() / 4,
+                    "{format:?} {level:?} wrote {size} bytes"
+                );
+            }
+        }
+    }
+    Ok(())
+}
+
+#[test]
+fn seven_z_names_need_the_password_only_when_encrypted() -> Result<(), Box<dyn Error>> {
+    let root = tempfile::tempdir()?;
+    let source = root.path().join("notes.txt");
+    fs::write(&source, b"secret contents")?;
+    let entries = [source];
+    for encrypt_names in [true, false] {
+        let archive = root.path().join("output.7z");
+        let settings = ArchiveSettings::new(ArchiveFormat::SevenZ)
+            .with_password(Some("test-password".to_owned()))
+            .with_encrypt_names(encrypt_names);
+        write_archive_with(&archive, &entries, &settings)?;
+        let listed =
+            sevenz_rust2::ArchiveReader::new(fs::File::open(&archive)?, "".into()).map(|reader| {
+                reader
+                    .archive()
+                    .files
+                    .iter()
+                    .map(|entry| entry.name().to_owned())
+                    .collect::<Vec<_>>()
+            });
+        if encrypt_names {
+            assert!(listed.is_err(), "names must require the password");
+        } else {
+            assert_eq!(listed?, ["notes.txt"]);
+        }
+        assert_eq!(
+            read_compressed_entries(&archive, ArchiveFormat::SevenZ, Some("test-password"))?,
+            BTreeMap::from([(
+                PathBuf::from("notes.txt"),
+                CompressedEntry::File(b"secret contents".to_vec()),
+            )])
+        );
+    }
+    Ok(())
+}

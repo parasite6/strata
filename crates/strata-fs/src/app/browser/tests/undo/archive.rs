@@ -78,8 +78,7 @@ fn a_completed_compression_records_the_archive_for_undo() {
         Location::local("/fixture"),
         "report.zip".to_owned(),
         TransferConflict::FailIfExists,
-        ArchiveFormat::Zip,
-        None,
+        crate::services::ArchiveSettings::new(ArchiveFormat::Zip),
     );
 
     assert_eq!(

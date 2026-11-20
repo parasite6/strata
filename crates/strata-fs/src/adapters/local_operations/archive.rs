@@ -108,7 +108,11 @@ pub(super) fn compress(request: CompressRequest, emit: Rc<dyn Fn(OperationEvent)
             });
             return;
         }
-        let archive_name = format!("{}.{}", request.archive_name, request.format.extension());
+        let archive_name = format!(
+            "{}.{}",
+            request.archive_name,
+            request.settings.format.extension()
+        );
         let archive_path = dest_dir.join(&archive_name);
         let operation = ActiveOperation::begin([dest_dir.clone()]);
         if request.conflict == TransferConflict::ReplaceExisting {
@@ -137,8 +141,7 @@ pub(super) fn compress(request: CompressRequest, emit: Rc<dyn Fn(OperationEvent)
         });
         let timer_id =
             archive_progress_timer(request.id, &progress, &total, &task_cancelled, &emit);
-        let format = request.format;
-        let password = request.password.clone();
+        let settings = request.settings.clone();
         let work_progress = progress.clone();
         let work_total = total.clone();
         let reports = TransferProgressTracker::new(request.id, None, None, emit.clone());
@@ -151,25 +154,17 @@ pub(super) fn compress(request: CompressRequest, emit: Rc<dyn Fn(OperationEvent)
             move |file| {
                 let sources = inspect_archive_sources(&entries, &work_cancelled)?;
                 work_total.store(sources.files, Ordering::Relaxed);
-                match format {
-                    ArchiveFormat::Zip => compress_zip(
-                        file,
-                        &entries,
-                        password.as_deref(),
-                        &work_progress,
-                        &work_cancelled,
-                    ),
-                    ArchiveFormat::SevenZ => compress_7z(
-                        file,
-                        &entries,
-                        password.as_deref(),
-                        &work_progress,
-                        &work_cancelled,
-                    ),
+                match settings.format {
+                    ArchiveFormat::Zip => {
+                        compress_zip(file, &entries, &settings, &work_progress, &work_cancelled)
+                    }
+                    ArchiveFormat::SevenZ => {
+                        compress_7z(file, &entries, &settings, &work_progress, &work_cancelled)
+                    }
                     ArchiveFormat::TarGz => compress_tar(
                         file,
                         &entries,
-                        Some(sources.gzip_level()),
+                        Some(sources.gzip_level(settings.level)),
                         &work_progress,
                         &work_cancelled,
                     ),

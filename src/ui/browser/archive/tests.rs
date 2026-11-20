@@ -173,8 +173,7 @@ fn compress_checks_the_final_name_off_the_ui_thread_and_asks_only_when_it_is_tak
                     ))],
                     Location::local(fixture.path()),
                     "archive".to_owned(),
-                    ArchiveFormat::Zip,
-                    None,
+                    crate::services::ArchiveSettings::new(ArchiveFormat::Zip),
                 );
 
                 wait_until(

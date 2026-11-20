@@ -13,7 +13,7 @@ use std::{
     sync::Arc,
 };
 
-pub use crate::model::ArchiveFormat;
+pub use crate::model::{ArchiveFormat, ArchiveSettings, CompressionLevel};
 use crate::model::{FileEntry, Location};
 
 use super::{ItemIdentity, LoadHandle};
@@ -353,8 +353,7 @@ pub struct CompressRequest {
     pub destination: Location,
     pub archive_name: String,
     pub conflict: TransferConflict,
-    pub format: ArchiveFormat,
-    pub password: Option<String>,
+    pub settings: ArchiveSettings,
 }
 
 #[derive(Clone, Debug)]

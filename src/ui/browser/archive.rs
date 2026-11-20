@@ -16,15 +16,18 @@
 
 use crate::adapters::probes::{self, Presence};
 use crate::model::{FileEntry, Location};
-use crate::services::{ArchiveFormat, PasswordFailure, TransferConflict, validate_basename};
+use crate::services::{
+    ArchiveFormat, ArchiveSettings, CompressionLevel, PasswordFailure, TransferConflict,
+    validate_basename,
+};
 use crate::ui::browser::ViewState;
 use crate::ui::browser::entry::{entry_kind_summary, item_count_label};
 use crate::ui::browser::paths::compact_display_path;
 use crate::ui::collection_edit::update_basename_validation;
 use crate::ui::controls::{
-    ModalTone, focus_button, form_entry, form_error_label, form_label, form_password_entry,
-    message_dialog_description, message_dialog_layout, modal_layout, segmented_control,
-    set_form_field_error,
+    ModalTone, focus_button, form_check_button, form_entry, form_error_label, form_label,
+    form_password_entry, message_dialog_description, message_dialog_layout, modal_layout,
+    segmented_control, set_form_field_error,
 };
 use crate::ui::keys::{
     self,
@@ -136,27 +139,24 @@ impl ViewState {
     /// * `entries` - Items to include in the archive
     /// * `destination` - Directory that will receive the archive
     /// * `archive_name` - Basename without the format extension
-    /// * `format` - Archive format to write
-    /// * `password` - Optional encryption password for formats that
-    ///   [`ArchiveFormat::supports_password`]
+    /// * `settings` - Format, level, and optional password of the archive
     fn start_compression(
         self: &Rc<Self>,
         entries: Vec<FileEntry>,
         destination: Location,
         archive_name: String,
-        format: ArchiveFormat,
-        password: Option<String>,
+        settings: ArchiveSettings,
     ) {
         self.extract_destination.take();
         let state = Rc::downgrade(self);
         glib::MainContext::default().spawn_local(async move {
-            let final_name = format!("{archive_name}.{}", format.extension());
+            let final_name = format!("{archive_name}.{}", settings.format.extension());
             let taken = archive_name_taken(&destination, &final_name).await;
             let Some(state) = state.upgrade() else {
                 return;
             };
             if taken {
-                state.ask_to_replace_archive(entries, destination, archive_name, format, password);
+                state.ask_to_replace_archive(entries, destination, archive_name, settings);
                 return;
             }
             state
@@ -167,8 +167,7 @@ impl ViewState {
                 destination,
                 archive_name,
                 TransferConflict::FailIfExists,
-                format,
-                password,
+                settings,
             );
         });
     }
@@ -178,10 +177,9 @@ impl ViewState {
         entries: Vec<FileEntry>,
         destination: Location,
         archive_name: String,
-        format: ArchiveFormat,
-        password: Option<String>,
+        settings: ArchiveSettings,
     ) {
-        let final_name = format!("{archive_name}.{}", format.extension());
+        let final_name = format!("{archive_name}.{}", settings.format.extension());
         let Some(ModalHost {
             overlay: window_overlay,
             blurred_root,
@@ -234,7 +232,7 @@ impl ViewState {
             let entries = entries.clone();
             let destination = destination.clone();
             let archive_name = archive_name.clone();
-            let password = password.clone();
+            let settings = settings.clone();
             button.connect_clicked(move |_| {
                 dismiss_modal_layer(&chosen_layer, &chosen_overlay, chosen_root.as_ref());
                 if let Some(state) = state.upgrade() {
@@ -246,8 +244,7 @@ impl ViewState {
                         destination.clone(),
                         archive_name.clone(),
                         conflict,
-                        format,
-                        password.clone(),
+                        settings.clone(),
                     );
                 }
             });
@@ -350,6 +347,8 @@ impl ViewState {
         let selected_format = Rc::new(Cell::new(ArchiveFormat::Zip));
         body.append(&format_label);
         body.append(&format_control);
+        let options = ArchiveOptionWidgets::new();
+        body.append(&options.level_box);
 
         let protection_label = form_label(&crate::i18n::tr("Protection"));
         let (protection_control, protection_options) =
@@ -366,6 +365,8 @@ impl ViewState {
         password_fields.append(&password_entry);
         password_fields.append(&confirm_label);
         password_fields.append(&confirm_entry);
+        password_fields.append(&options.encrypt_names);
+        password_fields.append(&options.names_visible);
         password_fields.set_visible(false);
 
         let protection_box = gtk::Box::new(gtk::Orientation::Vertical, 6);
@@ -392,11 +393,13 @@ impl ViewState {
             let selected_format = selected_format.clone();
             let protection_for_format = protection_box.clone();
             let no_password_for_format = no_password.clone();
+            let options_for_format = options.clone();
             option.connect_toggled(move |option| {
                 if !option.is_active() {
                     return;
                 }
                 selected_format.set(format);
+                options_for_format.show_for(format);
                 let supported = format.supports_password();
                 protection_for_format.set_visible(supported);
                 if !supported {
@@ -413,6 +416,7 @@ impl ViewState {
         let password_for_confirm = password_entry.clone();
         let confirm_for_confirm = confirm_entry.clone();
         let protected_for_confirm = password_protected.clone();
+        let options_for_confirm = options.clone();
         let overlay_for_error = self.overlay.clone();
         let dismiss_for_confirm = dismiss.clone();
         confirm.connect_clicked(move |_| {
@@ -457,8 +461,7 @@ impl ViewState {
                     confirm_entries.clone(),
                     confirm_destination.clone(),
                     archive_name,
-                    format,
-                    password,
+                    options_for_confirm.settings(format, password),
                 );
             }
         });
@@ -604,3 +607,78 @@ impl ViewState {
 
 #[cfg(test)]
 mod tests;
+
+/// The compress dialog's level and filename-encryption controls. Every dialog
+/// starts at [`CompressionLevel::Normal`] with names encrypted.
+#[derive(Clone)]
+struct ArchiveOptionWidgets {
+    level_box: gtk::Box,
+    level: gtk::DropDown,
+    encrypt_names: gtk::CheckButton,
+    names_visible: gtk::Label,
+}
+
+impl ArchiveOptionWidgets {
+    fn new() -> Self {
+        let label = form_label(&crate::i18n::tr("Compression level"));
+        let names: Vec<String> = CompressionLevel::ALL
+            .iter()
+            .map(|level| crate::i18n::tr(compression_level_key(*level)))
+            .collect();
+        let level =
+            gtk::DropDown::from_strings(&names.iter().map(String::as_str).collect::<Vec<_>>());
+        level.add_css_class("form-control");
+        level.set_selected(
+            CompressionLevel::ALL
+                .iter()
+                .position(|level| *level == CompressionLevel::default())
+                .unwrap_or(0) as u32,
+        );
+        crate::ui::accessibility::set_labelled_by(&level, &[label.upcast_ref()]);
+        let level_box = gtk::Box::new(gtk::Orientation::Vertical, 6);
+        level_box.append(&label);
+        level_box.append(&level);
+        let encrypt_names = form_check_button(&crate::i18n::tr("Encrypt file names"));
+        encrypt_names.set_active(true);
+        encrypt_names.set_visible(false);
+        let names_visible = message_dialog_description(&crate::i18n::tr(
+            "ZIP encrypts file contents only. File names stay visible.",
+        ));
+        let widgets = Self {
+            level_box,
+            level,
+            encrypt_names,
+            names_visible,
+        };
+        widgets.show_for(ArchiveFormat::Zip);
+        widgets
+    }
+
+    fn show_for(&self, format: ArchiveFormat) {
+        self.level_box.set_visible(format.supports_level());
+        self.encrypt_names.set_visible(format.can_encrypt_names());
+        self.names_visible.set_visible(format == ArchiveFormat::Zip);
+    }
+
+    fn settings(&self, format: ArchiveFormat, password: Option<String>) -> ArchiveSettings {
+        let level = CompressionLevel::ALL
+            .get(self.level.selected() as usize)
+            .copied()
+            .unwrap_or_default();
+        ArchiveSettings::new(format)
+            .with_password(password)
+            .with_level(level)
+            .with_encrypt_names(self.encrypt_names.is_active())
+    }
+}
+
+fn compression_level_key(level: CompressionLevel) -> &'static str {
+    match level {
+        CompressionLevel::Store => "archive.level.store",
+        CompressionLevel::Fastest => "archive.level.fastest",
+        CompressionLevel::Fast => "archive.level.fast",
+        CompressionLevel::Normal => "archive.level.normal",
+        CompressionLevel::Maximum => "archive.level.maximum",
+        CompressionLevel::Ultra => "archive.level.ultra",
+    }
+}

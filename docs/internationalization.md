@@ -24,7 +24,7 @@ JSON keys normally contain the original English message. Semantic keys are used
 for grammatical count forms and calendar data, and for an English word that needs
 a different translation in one context. Those context keys are prefixed with their
 use and their English value is the plain word: `completion.complete`,
-`chooser.filter`, `permissions.group`, `archive.format`, `properties.pinned`,
+`chooser.filter`, `permissions.group`, `archive.format`, `archive.level.*`, `properties.pinned`,
 `release_channel.preview`, `build_kind.nightly`, `pasted_image.name`,
 `dropped_text.name`, and `action_icon.*`.
 `settings_keywords.<target id>` keys hold space-separated search synonyms for a

@@ -62,14 +62,17 @@ fn every_encoder_stops_inside_a_member_when_cancelled() -> Result<(), Box<dyn Er
             output: Cursor::new(Vec::new()),
             cancelled: &cancelled,
         };
+        let settings = ArchiveSettings::new(format).with_password(password.map(str::to_owned));
         let result = match format {
-            ArchiveFormat::Zip => compress_zip(output, &entries, password, &progress, &cancelled),
-            ArchiveFormat::SevenZ => compress_7z(output, &entries, password, &progress, &cancelled),
+            ArchiveFormat::Zip => compress_zip(output, &entries, &settings, &progress, &cancelled),
+            ArchiveFormat::SevenZ => {
+                compress_7z(output, &entries, &settings, &progress, &cancelled)
+            }
             ArchiveFormat::Tar => compress_tar(output, &entries, None, &progress, &cancelled),
             ArchiveFormat::TarGz => compress_tar(
                 output,
                 &entries,
-                Some(inspect_archive_sources(&entries, &cancelled)?.gzip_level()),
+                Some(inspect_archive_sources(&entries, &cancelled)?.gzip_level(settings.level)),
                 &progress,
                 &cancelled,
             ),

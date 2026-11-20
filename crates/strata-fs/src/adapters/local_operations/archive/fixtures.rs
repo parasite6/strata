@@ -7,7 +7,7 @@ use super::{
 };
 use crate::{
     model::{EntryKind, FileEntry, Location, MetadataValue},
-    services::{ArchiveFormat, TransferReport},
+    services::{ArchiveFormat, ArchiveSettings, TransferReport},
 };
 use std::{
     error::Error,
@@ -138,11 +138,20 @@ pub fn write_compression_fixture(
     format: ArchiveFormat,
     password: Option<&str>,
 ) -> Result<usize, String> {
+    let settings = ArchiveSettings::new(format).with_password(password.map(str::to_owned));
+    write_archive_with(path, entries, &settings)
+}
+
+pub fn write_archive_with(
+    path: &Path,
+    entries: &[PathBuf],
+    settings: &ArchiveSettings,
+) -> Result<usize, String> {
     // The filesystem seam asserts it runs off the main thread.
     if crate::util::ui_thread::is_current() {
         return std::thread::scope(|scope| {
             scope
-                .spawn(|| write_compression_fixture(path, entries, format, password))
+                .spawn(|| write_archive_with(path, entries, settings))
                 .join()
                 .unwrap_or_else(|panic| std::panic::resume_unwind(panic))
         });
@@ -150,9 +159,9 @@ pub fn write_compression_fixture(
     let file = fs::File::create(path).map_err(|error| error.to_string())?;
     let progress = Arc::new(AtomicUsize::new(0));
     let cancelled = never_cancelled();
-    match format {
-        ArchiveFormat::Zip => compress_zip(file, entries, password, &progress, &cancelled),
-        ArchiveFormat::SevenZ => compress_7z(file, entries, password, &progress, &cancelled),
+    match settings.format {
+        ArchiveFormat::Zip => compress_zip(file, entries, settings, &progress, &cancelled),
+        ArchiveFormat::SevenZ => compress_7z(file, entries, settings, &progress, &cancelled),
         ArchiveFormat::Tar => compress_tar(file, entries, None, &progress, &cancelled),
         ArchiveFormat::TarGz => compress_tar(
             file,
@@ -160,7 +169,7 @@ pub fn write_compression_fixture(
             Some(
                 inspect_archive_sources(entries, &cancelled)
                     .map_err(|error| error.to_string())?
-                    .gzip_level(),
+                    .gzip_level(settings.level),
             ),
             &progress,
             &cancelled,

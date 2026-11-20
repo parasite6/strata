@@ -313,8 +313,7 @@ fn docked_completion_preserves_modal_focus_when_created_entries_are_selected() {
                     Location::local(fixture.temp.path()),
                     "created".into(),
                     TransferConflict::FailIfExists,
-                    ArchiveFormat::Zip,
-                    None,
+                    crate::services::ArchiveSettings::new(ArchiveFormat::Zip),
                 );
                 let id = fixture
                     .view
@@ -375,8 +374,7 @@ fn docked_copy_archive_and_deletion_update_and_cancel_independently() {
                 Location::local(fixture.temp.path()),
                 "bundle".into(),
                 TransferConflict::FailIfExists,
-                ArchiveFormat::Zip,
-                None,
+                crate::services::ArchiveSettings::new(ArchiveFormat::Zip),
             );
             let archive = fixture
                 .view
@@ -605,8 +603,7 @@ fn archive_activity_is_retained_before_display_and_while_a_large_member_is_runni
                 Location::local(fixture.temp.path()),
                 "bundle".into(),
                 TransferConflict::FailIfExists,
-                ArchiveFormat::Zip,
-                None,
+                crate::services::ArchiveSettings::new(ArchiveFormat::Zip),
             );
             let id = fixture
                 .view

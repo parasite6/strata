@@ -26,9 +26,10 @@ use crate::{
     },
     model::Location,
     services::{
-        ArchiveFormat, CompressRequest, ExtractRequest, KeptCause, KeptItem, LoadHandle,
-        OperationEvent, OperationProvider, OperationRequestId, PasswordFailure, RenameCause,
-        RenamedItem, ReplacedOriginal, SkippedItem, SpecialKind, TransferConflict, TransferReport,
+        ArchiveFormat, ArchiveSettings, CompressRequest, ExtractRequest, KeptCause, KeptItem,
+        LoadHandle, OperationEvent, OperationProvider, OperationRequestId, PasswordFailure,
+        RenameCause, RenamedItem, ReplacedOriginal, SkippedItem, SpecialKind, TransferConflict,
+        TransferReport,
     },
     test_support::ASYNC_MAIN_CONTEXT_DEFAULT,
 };
@@ -106,8 +107,7 @@ fn zip_request(
         destination: Location::local(destination),
         archive_name: archive_name.to_owned(),
         conflict,
-        format: ArchiveFormat::Zip,
-        password: None,
+        settings: ArchiveSettings::new(ArchiveFormat::Zip),
     }
 }
 

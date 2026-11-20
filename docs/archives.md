@@ -166,19 +166,30 @@ containing "password" cannot open the prompt.
 Strata chooses compression according to the output container, not just the
 selected filename extension.
 
+The compress dialog offers a **Compression level** for ZIP, 7Z and TAR.GZ. Every
+dialog starts at Normal; the choice is not remembered. The levels map onto the
+0–9 scale that DEFLATE, gzip and LZMA2 share:
+
+| Level | Store | Fastest | Fast | Normal | Maximum | Ultra |
+| --- | --- | --- | --- | --- | --- | --- |
+| Value | 0 | 1 | 3 | 6 | 8 | 9 |
+
+Store writes every member uncompressed (ZIP Stored, 7Z Copy, stored DEFLATE
+blocks for gzip).
+
 | Output | Payload encoding | Password support |
 | --- | --- | --- |
-| ZIP | Stored for known already-compressed members; DEFLATE level 6 for other files | AES-256 for either method; filenames remain visible |
-| 7Z | Copy for known already-compressed members; LZMA2 level 6 for other files | AES-256 for both methods, plus encrypted headers |
+| ZIP | Stored for known already-compressed members; DEFLATE at the chosen level for other files | AES-256 for either method; filenames remain visible, which the dialog says |
+| 7Z | Copy for known already-compressed members; LZMA2 at the chosen level for other files | AES-256 for both methods; **Encrypt file names** (on by default) also encrypts the headers |
 | TAR | No compression | None |
-| TAR.GZ | One gzip member containing the entire TAR stream; stored DEFLATE blocks when all regular-file payloads are known already-compressed, otherwise default gzip compression | None |
+| TAR.GZ | One gzip member containing the entire TAR stream; stored DEFLATE blocks when all regular-file payloads are known already-compressed, otherwise gzip at the chosen level | None |
 | RAR | Extraction only | No RAR creation |
 
 ZIP and 7Z can mix methods in one archive. 7Z currently writes independent,
 non-solid members: one file cannot borrow another file's compression dictionary.
 LZMA2 streams on the compression worker rather than buffering 64 MiB jobs for
 additional codec threads. Its dictionary is capped at the member's size (minimum
-4 KiB, maximum the level-6 default of 8 MiB). This avoids oversized per-file setup
+4 KiB, maximum the chosen level's preset: 8 MiB at Normal, 64 MiB at Ultra). This avoids oversized per-file setup
 and keeps worker lifetime tied to the operation. It does not parallelize large
 individual members.
 

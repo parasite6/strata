@@ -21,7 +21,7 @@ pub use action::{
     InterpreterFamily, MAX_ACTION_ID_CHARS, MAX_ACTION_NAME_CHARS, MenuPlacement, RunSpec,
     WorkingDirectory, expand_arguments, interpreter_family, suggest_id, valid_action_id,
 };
-pub use archive::ArchiveFormat;
+pub use archive::{ArchiveFormat, ArchiveSettings, CompressionLevel};
 pub use load_handle::LoadHandle;
 
 /// A browsable destination. Native paths remain byte-safe and URI locations remain explicit.

@@ -5,7 +5,7 @@ use std::{collections::HashSet, rc::Rc};
 use crate::{
     model::{FileEntry, Location},
     services::{
-        ArchiveFormat, CompressRequest, CreateDirectoryRequest, CreateFileRequest, DeleteRequest,
+        ArchiveSettings, CompressRequest, CreateDirectoryRequest, CreateFileRequest, DeleteRequest,
         ExtractRequest, MoveRecord, OperationEvent, OperationProvider, OperationRequestId,
         PasteItem, PasteRequest, PlaceEntryRequest, RenameRecord, RenameRequest, RestoreRequest,
         RestoreSource, RestoreTrashItem, TransferConflict, TransferReport, TypedPath,
@@ -456,8 +456,7 @@ impl Browser {
         destination: Location,
         archive_name: String,
         conflict: TransferConflict,
-        format: ArchiveFormat,
-        password: Option<String>,
+        settings: ArchiveSettings,
     ) {
         if entries.is_empty() {
             return;
@@ -480,8 +479,7 @@ impl Browser {
                 destination,
                 archive_name,
                 conflict,
-                format,
-                password,
+                settings,
             },
             self.operation_callback(request_id, false, refresh),
         );

@@ -59,8 +59,7 @@ fn parked_operations_honor_cancellation_before_handle_installation() {
                 Location::local("/fixture/destination"),
                 "bundle.zip".into(),
                 TransferConflict::FailIfExists,
-                crate::services::ArchiveFormat::Zip,
-                None,
+                crate::services::ArchiveSettings::new(crate::services::ArchiveFormat::Zip),
             );
         } else {
             copy(&browser, "input.txt");

@@ -324,7 +324,7 @@ fn every_compression_format_commits_a_readable_archive() -> Result<(), Box<dyn E
     ] {
         let base = format!("archive-{}", format.extension().replace('.', "-"));
         let events = run_compression(CompressRequest {
-            format,
+            settings: ArchiveSettings::new(format),
             ..zip_request(&source, &destination, &base, TransferConflict::FailIfExists)
         });
         assert!(
@@ -357,7 +357,7 @@ fn expect_unsupported_7z_links(
         fs::write(&archive, b"original archive")?;
     }
     let events = run_compression(CompressRequest {
-        format: ArchiveFormat::SevenZ,
+        settings: ArchiveSettings::new(ArchiveFormat::SevenZ),
         ..zip_request(entry, destination.path(), "archive", conflict)
     });
     assert!(events.iter().any(|event| matches!(event, OperationEvent::Failed { message, .. } if message.contains("does not support symbolic links") && message.contains("Use ZIP or TAR instead"))));

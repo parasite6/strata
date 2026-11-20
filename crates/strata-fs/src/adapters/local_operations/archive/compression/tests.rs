@@ -10,14 +10,18 @@ mod staging;
 
 use super::super::fixtures::{
     COMPRESSION_STAGE, HomeTrashGuard, compression_stage_mode, names, never_cancelled,
-    set_times_without_following, stages, tempdir_on_home_device, write_compression_fixture,
+    set_times_without_following, stages, tempdir_on_home_device, write_archive_with,
+    write_compression_fixture,
 };
 use super::{ArchiveError, inspect_archive_sources, process_umask, write_staged_archive};
 use crate::{
     adapters::local_operations::tests::fs_quirks::{
         FsQuirks, Op, Preset, Quirks, Trash, evict, recreated,
     },
-    services::{ArchiveFormat, PlacedSnapshot, ReplacedOriginal, TransferConflict},
+    services::{
+        ArchiveFormat, ArchiveSettings, CompressionLevel, PlacedSnapshot, ReplacedOriginal,
+        TransferConflict,
+    },
     test_support::ASYNC_MAIN_CONTEXT_DEFAULT,
 };
 use contents::{CompressedEntry, read_compressed_entries};

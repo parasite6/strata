@@ -33,7 +33,10 @@ use super::{
 use crate::{
     adapters::volume::Family,
     model::hidden_names::HiddenName,
-    services::{ItemIdentity, PlacedSnapshot, ReplacedOriginal, TransferConflict, error_detail},
+    services::{
+        ArchiveSettings, CompressionLevel, ItemIdentity, PlacedSnapshot, ReplacedOriginal,
+        TransferConflict, error_detail,
+    },
 };
 use rustix::fs::AtFlags;
 use std::{
@@ -859,15 +862,17 @@ fn compression_result(
 
 /// Writes a ZIP archive of `entries` into `file`.
 ///
-/// Regular files use deflate level 6 unless [`is_incompressible`] selects
-/// stored. An optional `password` enables AES-256 encryption. Symbolic-link
-/// targets must be UTF-8; otherwise the caller is asked to use TAR instead.
+/// Regular files use deflate at the settings' level unless the level is
+/// [`CompressionLevel::Store`] or [`is_incompressible`] selects stored. A
+/// password enables AES-256 encryption of contents; ZIP cannot hide names.
+/// Symbolic-link targets must be UTF-8; otherwise the caller is asked to use TAR
+/// instead.
 ///
 /// # Arguments
 ///
 /// * `file` - Staging file that receives the ZIP bytes
 /// * `entries` - Absolute paths of selected files, directories, and links
-/// * `password` - Optional AES-256 password
+/// * `settings` - Level and optional AES-256 password
 /// * `progress` - Counter incremented once per non-directory member
 /// * `cancelled` - Flag checked between members and during copies
 ///
@@ -882,7 +887,7 @@ fn compression_result(
 pub(super) fn compress_zip(
     file: impl Write + Seek,
     entries: &[std::path::PathBuf],
-    password: Option<&str>,
+    settings: &ArchiveSettings,
     progress: &Arc<AtomicUsize>,
     cancelled: &AtomicBool,
 ) -> Result<(), ArchiveError> {
@@ -892,7 +897,9 @@ pub(super) fn compress_zip(
         let mut writer = zip::ZipWriter::new(writer);
         let deflated = zip::write::SimpleFileOptions::default()
             .compression_method(zip::CompressionMethod::Deflated)
-            .compression_level(Some(6));
+            .compression_level(Some(i64::from(settings.level.value())));
+        let store_all = settings.level == CompressionLevel::Store;
+        let password = settings.password.as_deref();
         let stored = zip::write::SimpleFileOptions::default()
             .compression_method(zip::CompressionMethod::Stored);
         let deflated = if let Some(pw) = password {
@@ -933,7 +940,7 @@ pub(super) fn compress_zip(
                         .map_err(zip_text)?;
                 }
                 ArchiveSource::File(file) => {
-                    let base = if is_incompressible(path) {
+                    let base = if store_all || is_incompressible(path) {
                         stored
                     } else {
                         deflated
@@ -1082,9 +1089,9 @@ pub(super) struct ArchiveSources {
 }
 
 impl ArchiveSources {
-    pub fn gzip_level(&self) -> flate2::Compression {
+    pub fn gzip_level(&self, level: CompressionLevel) -> flate2::Compression {
         if self.has_compressible_files {
-            flate2::Compression::default()
+            flate2::Compression::new(level.value())
         } else {
             // Gzip wraps the entire TAR stream: keep a valid gzip member, using
             // stored DEFLATE blocks only when every payload is already compressed.
@@ -1133,6 +1140,23 @@ const INCOMPRESSIBLE_EXTS: &[&str] = &[
     "pptx", "odt", "ods", "odp", "deb", "rpm", "apk", "jar", "war",
 ];
 
+/// The dictionary size of LZMA2 preset `level`, as in xz's presets.
+fn lzma2_dictionary(level: u32) -> u64 {
+    const PRESETS: [u64; 10] = [
+        256 << 10,
+        1 << 20,
+        2 << 20,
+        4 << 20,
+        4 << 20,
+        8 << 20,
+        8 << 20,
+        16 << 20,
+        32 << 20,
+        64 << 20,
+    ];
+    PRESETS[level.min(9) as usize]
+}
+
 /// Returns whether `path`'s extension is in [`INCOMPRESSIBLE_EXTS`].
 fn is_incompressible(path: &Path) -> bool {
     path.extension()
@@ -1143,15 +1167,16 @@ fn is_incompressible(path: &Path) -> bool {
 
 /// Writes a 7z archive of `entries` into `file`.
 ///
-/// Uses LZMA2 at level 6 with a thread count from
-/// [`std::thread::available_parallelism`]. An optional `password` adds AES
-/// encryption. Symbolic links are not supported.
+/// Uses LZMA2 at the settings' level, or copies every member at
+/// [`CompressionLevel::Store`]. A password adds AES encryption of contents, and
+/// of the member names when the settings ask for it. Symbolic links are not
+/// supported.
 ///
 /// # Arguments
 ///
 /// * `file` - Staging file that receives the 7z bytes
 /// * `entries` - Absolute paths of selected files and directories
-/// * `password` - Optional AES password
+/// * `settings` - Level, optional AES password, and whether names are encrypted
 /// * `progress` - Counter incremented once per non-directory member
 /// * `cancelled` - Flag checked between members
 ///
@@ -1166,7 +1191,7 @@ fn is_incompressible(path: &Path) -> bool {
 pub(super) fn compress_7z(
     file: impl Write + Seek,
     entries: &[std::path::PathBuf],
-    password: Option<&str>,
+    settings: &ArchiveSettings,
     progress: &Arc<AtomicUsize>,
     cancelled: &AtomicBool,
 ) -> Result<(), ArchiveError> {
@@ -1174,8 +1199,11 @@ pub(super) fn compress_7z(
     compression_result(cancelled, || {
         let mut writer = sevenz_rust2::ArchiveWriter::new(CompressionIo::new(file, cancelled))
             .map_err(sevenz_text)?;
+        writer.set_encrypt_header(settings.encrypt_names);
+        let level = settings.level.value();
+        let password = settings.password.as_deref();
         let lzma2 = sevenz_rust2::EncoderConfiguration::new(sevenz_rust2::EncoderMethod::LZMA2)
-            .with_options(EncoderOptions::Lzma2(Lzma2Options::from_level(6)));
+            .with_options(EncoderOptions::Lzma2(Lzma2Options::from_level(level)));
         let copy = sevenz_rust2::EncoderConfiguration::new(sevenz_rust2::EncoderMethod::COPY);
         let methods = |codec| {
             if let Some(pw) = password {
@@ -1213,13 +1241,13 @@ pub(super) fn compress_7z(
             entry.windows_attributes = FILE_ATTRIBUTE_UNIX_EXTENSION
                 | (metadata.permissions().mode() << 16)
                 | if metadata.is_dir() { 0x10 } else { 0x20 };
-            if is_incompressible(path) {
+            if settings.level == CompressionLevel::Store || is_incompressible(path) {
                 writer.set_content_methods(stored_methods.clone());
             } else {
                 // Members are encoded independently. Avoid a 64 MiB work queue and
                 // detached codec threads; cap the dictionary to the member size.
-                let mut options = Lzma2Options::from_level(6);
-                options.set_dictionary_size(metadata.len().min(8 << 20) as u32);
+                let mut options = Lzma2Options::from_level(level);
+                options.set_dictionary_size(metadata.len().min(lzma2_dictionary(level)) as u32);
                 let codec =
                     sevenz_rust2::EncoderConfiguration::new(sevenz_rust2::EncoderMethod::LZMA2)
                         .with_options(EncoderOptions::Lzma2(options));
