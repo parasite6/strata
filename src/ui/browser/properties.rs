@@ -20,6 +20,7 @@ use std::path::Path;
 use std::rc::Rc;
 use std::time::{Duration, Instant};
 
+mod checksum;
 mod media;
 
 const SIZE_PROGRESS_INTERVAL: Duration = Duration::from_millis(150);
@@ -651,6 +652,13 @@ impl ViewState {
                     .map(|path| media::load(&media_section, path.to_path_buf()))
             }
         });
+        if let Some(path) = entry
+            .as_ref()
+            .filter(|entry| entry.is_file())
+            .and_then(|entry| entry.location.native_path())
+        {
+            checksum::add_checksum_row(&details, layer.upcast_ref(), path.to_path_buf());
+        }
         if let Some(load) = metadata_load {
             let load = Rc::new(load);
             let closing = load.clone();

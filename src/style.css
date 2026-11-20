@@ -4401,6 +4401,11 @@ dropdown.form-control popover row:selected check {
   font-variant-numeric: tabular-nums;
 }
 
+.properties-checksum-value {
+  font-family: monospace;
+  font-size: 0.86em;
+}
+
 .properties-size-spinner {
   color: @strata_accent;
   min-width: 12px;

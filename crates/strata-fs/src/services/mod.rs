@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 
 pub(crate) mod actions;
+mod checksum;
 mod dropped_content;
 #[cfg(test)]
 mod file_activity_tests;
@@ -27,6 +28,7 @@ pub use actions::{
     ActionAvailability, ActionCatalog, ActionHandle, ActionLoadFailure, ActionProgram,
     ActionRegistry, ActionScript, ActionWriteRequest, MatchedAction,
 };
+pub use checksum::sha256_file;
 pub use dropped_content::{
     DroppedFile, MAX_DROPPED_FILE_BYTES, WebLink, has_link_extension, save_dropped_files,
     save_new_file,
