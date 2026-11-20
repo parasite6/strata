@@ -73,25 +73,77 @@ design and documentation here is the work of the upstream authors; see
 - **Changes are not sent upstream.** Fork changes are made directly on this
   repository's `main` and are not proposed to the official project.
 
-What this fork adds on top of upstream:
+### What this fork adds
 
-- **Compression options:** a compression level from Store to Ultra for ZIP, 7Z and
-  TAR.GZ, and an **Encrypt file names** choice for password-protected 7Z archives.
-- **SHA-256 in Properties:** a file's checksum, calculated in the background and
-  selectable for copying.
-- **Folder previews in Icons view:** folders show thumbnails of the pictures and
-  videos inside them, with a **Folder previews** setting; network shares are skipped.
-- **Icon themes:** file icons from installed icon themes or your own images, following
-  desktop theme changes live.
-- **Media players:** a per-stream loop toggle.
-- **File chooser:** a single click selects instead of previewing, and Save dialogs open
-  with nothing selected.
-- **Text preview:** a wider, classic editor scrollbar.
-- **Source installs:** `install.sh` builds this fork from a checkout, with Fedora
-  support. See [Installation](#installation).
-- **Fixes:** stale glyph pixels left after text changes, path bar and pane header
-  repaints, filter results that lost their preview, the partial-search notice covering
-  results, and faster listing of large folders.
+Everything below is in this fork only. Everything in [Features](#features) comes from
+upstream and is in both.
+
+#### Archives
+
+- **Compression level:** the Compress dialog offers **Store**, **Fastest**, **Fast**,
+  **Normal**, **Maximum** and **Ultra** for ZIP, 7Z and TAR.GZ (levels 0, 1, 3, 6, 8
+  and 9). Every dialog starts at Normal. Store packs files without compressing them.
+  Files that are already compressed, such as photos, videos and other archives, are
+  stored as they are at every level. See [Archives](docs/archives.md#archive-creation).
+- **Encrypt file names:** password-protected 7Z archives can hide their file list
+  behind the password (on by default) or leave the names readable while the contents
+  stay encrypted. The dialog notes that ZIP encrypts contents only.
+
+#### Icons
+
+- **Icon themes:** **Settings → Appearance → Icon theme** draws file, folder and
+  sidebar shortcut icons from the built-in set, the desktop's theme (**Follow
+  system**, updating live when it changes) or any installed freedesktop icon theme,
+  falling back to the bundled icon where a theme has none.
+- **Custom icon images:** **Customize…** on a file or folder adds **Choose Image…**
+  for a PNG or SVG of your own.
+- **Folder previews:** in Icons view, folders show thumbnails of the pictures and
+  videos inside them. Turn this off with **Settings → Appearance → Folder previews**.
+  Folders on NFS, SMB and other network shares are not scanned, and scans wait until
+  scrolling stops.
+
+#### Files and previews
+
+- **SHA-256 in Properties:** Properties on a file shows its SHA-256 checksum,
+  calculated in the background and selectable for copying.
+- **Media loop toggle:** audio and video previews have a **Loop** button for the
+  current file. It starts off and is not saved.
+- **Classic text preview scrollbar:** text and source previews use a wider, always
+  visible scrollbar instead of the thin overlay one.
+- **Pasted terminal paths:** the address bar accepts a path copied from a terminal,
+  with escaped spaces (`God\ of\ War`) or surrounding quotes.
+
+#### File chooser
+
+- **Single click selects:** in Open and Save dialogs a click only selects, even with
+  **Single-click previews** on, so a double-click accepts a file without opening a
+  preview first. Space still toggles the preview.
+- **Save dialogs open with nothing selected:** the folder shown is the destination
+  until you select a folder, instead of a pre-highlighted first row that looked like a
+  chosen subfolder.
+
+#### Fixes and performance
+
+- **Faster large folders:** a folder with 100,000 entries loads in about 1.6 seconds
+  instead of more than 40.
+- **No stale text pixels:** whole-frame redraws stop changed text, such as the path
+  bar and file names, from leaving marks above it.
+- **Repaint fixes:** the path bar, pane headers (their spinner and partial-listing
+  hint) and the Settings navigation during search now redraw when they change.
+- **Filter results keep their preview:** a double-clicked or previewed filter result in
+  List and Icons no longer jumps to the folder's first row.
+- **Partial search notice:** the notice that a search is incomplete sits above the
+  results instead of covering them.
+
+#### Installation and maintenance
+
+- **Source installs:** `install.sh` builds and installs this fork from a checkout, or
+  clones it with `--from-source`, on Arch, Omarchy and Fedora, at low priority with thin
+  LTO. See [Installation](#installation).
+- **Dependency security updates:** `zip` 9.0.5 or newer, and `minimatch` 11 in the
+  math renderer.
+- **Fork automation:** a daily merge of upstream's `main`, and a Fork CI that runs
+  formatting, Clippy and a build on GitHub-hosted runners.
 
 ## Features
 
