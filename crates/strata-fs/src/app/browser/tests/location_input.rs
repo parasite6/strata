@@ -1011,3 +1011,30 @@ fn location_input_with_dot_segments_opens_the_resolved_folder_and_parent_moves_t
         ]
     );
 }
+
+#[test]
+fn pasted_shell_quoting_is_undone_but_other_backslashes_stay() {
+    let home = Path::new("/home/fixture");
+    let cases = [
+        (
+            r"/run/media/user/SteamLibrary/common/God\ of\ War\ Ragnarok/",
+            "/run/media/user/SteamLibrary/common/God of War Ragnarok",
+        ),
+        (
+            r"~/Tom\'s\ \(old\)\ files",
+            "/home/fixture/Tom's (old) files",
+        ),
+        ("'/srv/two words/it\\s'", "/srv/two words/it\\s"),
+        ("\"/srv/say \\\"hi\\\"/x\"", "/srv/say \"hi\"/x"),
+        (r"/srv/back\slash", r"/srv/back\slash"),
+        ("'/srv/unbalanced", "'/srv/unbalanced"),
+    ];
+    for (typed, expected) in cases {
+        let location = location_from_input_with_home(typed, home).expect(typed);
+        assert_eq!(
+            location.native_path().map(Path::as_os_str),
+            Some(OsStr::new(expected)),
+            "{typed}"
+        );
+    }
+}

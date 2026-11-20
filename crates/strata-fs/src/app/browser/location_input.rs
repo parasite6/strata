@@ -15,6 +15,8 @@ pub(super) fn location_from_input_with_home(
     input: &str,
     home: &Path,
 ) -> Result<Location, LocationValidationError> {
+    let unquoted = shell_unquoted(input);
+    let input = unquoted.as_str();
     if input == "~" {
         return Ok(Location::local(lexically_normalized(home)));
     }
@@ -57,6 +59,47 @@ pub(super) fn location_from_input_with_home(
     // Typed text must take GIO's percent-encoded form to match listed children.
     let uri = validate_uri_credentials(&format!("{normalized}{}", &input[scheme_end..]))?;
     Ok(Location::uri(without_query_or_fragment(uri)))
+}
+
+/// Characters a shell needs escaped. A backslash before anything else is kept, since
+/// it may be part of a real name.
+const SHELL_ESCAPED: &str = " \t'\"\\()[]{}&;|<>$`!*?#~,=";
+
+/// Undoes the quoting of a path pasted from a terminal: one pair of surrounding quotes,
+/// or backslash escapes of shell characters, as in `God\ of\ War`.
+fn shell_unquoted(input: &str) -> String {
+    if input.len() >= 2 {
+        if let Some(inner) = input
+            .strip_prefix('\'')
+            .and_then(|rest| rest.strip_suffix('\''))
+        {
+            return inner.to_owned();
+        }
+        if let Some(inner) = input
+            .strip_prefix('"')
+            .and_then(|rest| rest.strip_suffix('"'))
+        {
+            return unescaped(inner, "\"\\$`");
+        }
+    }
+    unescaped(input, SHELL_ESCAPED)
+}
+
+fn unescaped(input: &str, escapable: &str) -> String {
+    let mut output = String::with_capacity(input.len());
+    let mut characters = input.chars().peekable();
+    while let Some(character) = characters.next() {
+        if character == '\\'
+            && let Some(&next) = characters.peek()
+            && escapable.contains(next)
+        {
+            output.push(next);
+            characters.next();
+        } else {
+            output.push(character);
+        }
+    }
+    output
 }
 
 /// GVfs folds a URI's query and fragment into the mount spec, so a backend that ignores them,
