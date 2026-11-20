@@ -711,7 +711,12 @@ fn present_window(state: &ChooserState, window: &gtk::Window, browser: &Rc<crate
         state.request.parent_size_hint,
     );
     window.set_default_size(dimensions.0, dimensions.1);
-    browser.navigate(Location::local(&state.request.initial_directory));
+    // A Save opens on its folder; a preselected row reads as a chosen subfolder.
+    let select_first = matches!(state.request.kind, ChooserKind::Open { .. });
+    browser.navigate_with_selection(
+        Location::local(&state.request.initial_directory),
+        select_first,
+    );
     window.present();
 }
 

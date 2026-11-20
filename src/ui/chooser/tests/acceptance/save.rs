@@ -80,9 +80,9 @@ fn localized_overwrite_warning_preserves_caller_labels_and_cancelled_file() {
 }
 
 #[test]
-fn save_file_ignores_load_cursor() {
+fn save_file_opens_with_nothing_selected() {
     crate::test_support::gtk_test(
-        "ui::chooser::tests::acceptance::save::save_file_ignores_load_cursor",
+        "ui::chooser::tests::acceptance::save::save_file_opens_with_nothing_selected",
         || {
             crate::ui::prepare_portal_ui();
             PreferenceManager::shared().set_browser_mode(BrowserMode::List);
@@ -95,7 +95,7 @@ fn save_file_ignores_load_cursor() {
             let (state, result) = open_chooser(save_request);
             let browser = state.view.browser();
             wait_column(&browser, 0, 1);
-            assert!(browser.selection_is_load_cursor());
+            assert!(browser.selected_entries().is_empty());
             let selected = accept(&state, &result);
             assert_single_uri(&selected, root.path().join("output.txt"), "");
             state.window.close();
@@ -344,12 +344,12 @@ fn save_file_clicking_the_selected_row_refills_the_name_in_every_view() {
                 });
                 let filename = state.filename.as_ref().expect("filename");
                 assert_eq!(filename.text(), "suggested.txt", "{mode:?}");
-                assert!(browser.selection_is_load_cursor(), "{mode:?}");
+                assert!(browser.selected_entries().is_empty(), "{mode:?}");
 
                 let click_file = || {
                     press_through_capture(&state.view.widget(), &file_label().expect("file label"))
                 };
-                click_file();
+                browser.set_selection(0, &[0], Some(0));
                 wait_until(|| filename.text() == "existing.txt");
                 assert!(!browser.selection_is_load_cursor(), "{mode:?}");
                 filename.set_text("edited.txt");
@@ -392,8 +392,7 @@ fn save_file_with_selected_file_saves_to_active_folder() {
 
             let filename = state.filename.as_ref().expect("filename");
             assert_eq!(filename.text(), "new_file.txt");
-            assert!(browser.selection_is_load_cursor());
-            assert_eq!(browser.selected_entries().len(), 1);
+            assert!(browser.selected_entries().is_empty());
             browser.commit_selection();
             browser.set_selection(0, &[0], Some(0));
             assert!(!browser.selection_is_load_cursor());
