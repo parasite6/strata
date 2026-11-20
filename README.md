@@ -35,12 +35,11 @@ Strata combines spatial Miller-column navigation with familiar Icons and List vi
 - [About this fork](#about-this-fork)
 - [Features](#features)
 - [Installation](#installation)
-  - [Install this fork](#install-this-fork)
-  - [Fedora](#fedora)
+  - [Install with the installer](#install-with-the-installer)
+  - [Build manually](#build-manually)
   - [Nix and NixOS](#nix-and-nixos)
-  - [Interactive installation](#interactive-installation)
-  - [AI-assisted installation](#ai-assisted-installation)
-  - [Manual installation](#manual-installation)
+  - [Update](#update)
+  - [Uninstall](#uninstall)
 - [Usage and desktop integration](#usage-and-desktop-integration)
   - [Desktop entry](#desktop-entry)
   - [Make Strata the Omarchy file manager](#make-strata-the-omarchy-file-manager)
@@ -68,7 +67,7 @@ design and documentation here is the work of the upstream authors; see
 - **Kept in sync with upstream.** A scheduled job merges upstream's `main` into this
   fork every day, so upstream fixes and features arrive here too.
 - **No official releases.** This fork publishes no binaries or signed releases. Install
-  it by building from source, as described in [Install this fork](#install-this-fork).
+  it by building from source, as described in [Installation](#installation).
   Release downloads, the signed update manifest and the in-app updater all refer to
   the official project.
 - **Changes are not sent upstream.** Fork changes are made directly on this
@@ -89,7 +88,7 @@ What this fork adds on top of upstream:
   with nothing selected.
 - **Text preview:** a wider, classic editor scrollbar.
 - **Source installs:** `install.sh` builds this fork from a checkout, with Fedora
-  support. See [Install this fork](#install-this-fork).
+  support. See [Installation](#installation).
 - **Fixes:** stale glyph pixels left after text changes, path bar and pane header
   repaints, filter results that lost their preview, the partial-search notice covering
   results, and faster listing of large folders.
@@ -107,7 +106,7 @@ What this fork adds on top of upstream:
 - **Remote locations:** browse GIO/GVfs locations such as authenticated SMB shares and SFTP servers from the location field, with explicit host-key decisions.
 - **Administrator access:** open a local folder you can't read, such as a root-owned backup folder, after the system's polkit password prompt. See [Administrator access](docs/administrator-access.md).
 - **Adaptive appearance:** compact or airy density, 95 bundled themes, custom themes, and live Omarchy Quattro theme following.
-- **Updates in the app:** automatic update checks (on by default; turn them off in **Settings → Updates**), release notes, verified downloads, and in-place installation for release binaries.
+- **Updates in the app:** automatic update checks (on by default; turn them off in **Settings → Updates**), release notes, verified downloads, and in-place installation for release binaries. In this fork these offer the **official** releases, which replace the fork's build; see [Installation](#installation).
 - **Custom actions:** add your own scripts to the file and folder context menus, with a manager in **Settings → Actions** and background progress in the Jobs dashboard. See [Custom actions](docs/custom-actions.md).
 - **Integrations:** opt-in providers maintained in the repository's [`integrations/`](integrations/README.md) catalog, installed, updated and removed from **Settings → Integrations**; they plug services and devices into the context menu and the **Send to…** menu. See [External file providers](docs/file-providers.md).
 - **System file chooser:** opt in through **Settings → General → Desktop integration → System file manager**, the installer, or `strata --install-portal`; see [portal setup](docs/portal-file-chooser.md).
@@ -115,15 +114,33 @@ What this fork adds on top of upstream:
 
 ## Installation
 
-### Install this fork
+This fork has **no prebuilt releases, COPR package, AUR package or Nix cache**. It is
+always built from source on your machine. The packages, release archives and installer
+commands published by the official project install the **official** Strata, not this
+fork; for those, see the [official installation guide](https://github.com/lgse/strata#installation).
 
-This fork has no prebuilt releases, so it is built from source on your machine. The
-installer installs the build and runtime packages with pacman (Arch, Omarchy) or dnf
-(Fedora), builds with Cargo at low priority on half your CPU cores, and installs
-`~/.local/bin/strata` with the same integrations as the official installer. You need
-[Rust](https://rustup.rs) (`cargo`) and `git`.
+Arch Linux, Omarchy and Fedora are supported by the installer. Strata needs a
+glibc-based Linux system with GTK **4.12 or newer**. On other distributions, install
+the equivalent packages yourself and [build manually](#build-manually).
 
-From a checkout:
+> [!WARNING]
+> **Settings → Updates installs the official release** from lgse/strata and replaces
+> this fork's build, and so does the installer when run outside a checkout without
+> `--from-source`, or with `--from-release`. To stay on the fork, turn off automatic
+> update checks in **Settings → Updates** and update as described in
+> [Update](#update).
+
+<a id="interactive-installation"></a>
+
+### Install with the installer
+
+The installer installs the build and runtime packages, Rust included, with pacman
+(Arch, Omarchy) or dnf (Fedora), builds this fork with Cargo, and installs it
+per-user at `~/.local/bin/strata` with the desktop integrations you choose. The build
+runs at low priority on half your CPU cores; set `STRATA_BUILD_JOBS` to change that.
+A first build takes several minutes.
+
+From a checkout, which is the easiest way to update later:
 
 ```bash
 git clone https://github.com/parasite6/strata.git
@@ -131,342 +148,127 @@ cd strata
 ./install.sh
 ```
 
-Or in one step, which clones this fork into a temporary folder:
+Or in one step, which clones this fork into a temporary folder and builds it there:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/parasite6/strata/main/install.sh | bash -s -- --from-source
 ```
 
-To update, run `git pull` in your checkout and `./install.sh` again. Set
-`STRATA_BUILD_JOBS` to change how many CPU cores the build uses.
-
-> [!WARNING]
-> Running the installer **without** `--from-source` outside a checkout, using
-> `--from-release`, or installing an update from **Settings → Updates** installs the
-> **official** release from lgse/strata and replaces this fork's build. To stay on the
-> fork, turn off automatic update checks in **Settings → Updates** and update by
-> rebuilding.
-
-The rest of this section is the official project's installation guide. It installs
-the **official** Strata release, not this fork.
-
-Arch Linux and Omarchy are the primary supported environments. Current binaries require **glibc 2.39 or newer** and the runtime libraries listed below.
-
-### Fedora
-
-Fedora on `x86_64` or `aarch64` can install Strata from COPR, which builds it from source. Updates arrive with ordinary system updates:
-
-```bash
-sudo dnf copr enable @lgse/strata
-sudo dnf install strata
-```
-
-For alpha, beta, and release-candidate builds as well as stable releases, enable `@lgse/strata-preview` instead. Enable only one of the two.
-
-The COPR package cannot open RAR archives, because COPR accepts only software under licenses Fedora allows, and it has no in-app updater. Codec-dependent previews use whichever FFmpeg is installed: Fedora's `ffmpeg-free`, or `ffmpeg` from RPM Fusion for more formats.
-
-### Nix and NixOS
-
-Build from source with Nix on `x86_64-linux` or `aarch64-linux`:
-
-```bash
-nix run github:lgse/strata
-nix profile add github:lgse/strata
-```
-
-For NixOS or Home Manager, add a flake input:
-
-```nix
-inputs.strata.url = "github:lgse/strata";
-```
-
-```nix
-{ inputs, pkgs, ... }:
-{
-  # Home Manager; use environment.systemPackages instead for NixOS.
-  home.packages = [ inputs.strata.packages.${pkgs.stdenv.hostPlatform.system}.default ];
-}
-```
-
-Pass `inputs` through `extraSpecialArgs` (Home Manager) or `specialArgs` (NixOS).
-Update the flake input and rebuild to upgrade. On NixOS, enable `services.gvfs.enable`
-for network shares and `services.udisks2.enable` for disk management.
-
-Non-free UnRAR support is omitted by default. Enable it from a package set that
-allows unfree software, such as one with `nixpkgs.config.allowUnfree = true;`:
-
-```nix
-pkgs.callPackage "${inputs.strata}/package.nix" { rarSupport = true; }
-```
-
-The Nix package builds with `STRATA_INTEGRATIONS=package`, so the desktop
-integrations that other installations set up from Settings or the command line
-(the file chooser portal, the FileManager1 service, and the udiskie unlock hook)
-come from your Nix configuration instead. Settings → General describes them as
-provided by the package, and `--install-portal`, `--uninstall-portal`,
-`--dismiss-portal-prompt`, `--install-udiskie-unlock`, and
-`--uninstall-udiskie-unlock` refuse. Those runtime installers would record the
-store path of the current build, which the next update or garbage collection
-invalidates; the derivations below follow the package through updates, rollbacks,
-and garbage collection.
-
-The package exposes `fileChooserPortal` (the `strata.portal` file and its D-Bus
-service) and `fileManagerService` (the `org.freedesktop.FileManager1` service).
-On NixOS:
-
-```nix
-{ inputs, pkgs, ... }:
-let
-  strata = inputs.strata.packages.${pkgs.stdenv.hostPlatform.system}.default;
-in
-{
-  environment.systemPackages = [ strata ];
-  xdg.portal.enable = true;
-  xdg.portal.extraPortals = [ strata.fileChooserPortal ];
-  xdg.portal.config.common."org.freedesktop.impl.portal.FileChooser" = [ "strata" "gtk" ];
-  services.dbus.packages = [ strata.fileManagerService ];
-}
-```
-
-Replace `gtk` with the chooser backend your desktop already uses, and keep
-Strata's FileManager1 service out of `services.dbus.packages` on a system whose
-desktop ships its own provider for that bus name unless Strata should answer
-"Open file location" everywhere. Home Manager has the same `xdg.portal` options;
-set `xdg.mimeApps.defaultApplications."inode/directory" = "io.github.lgse.Strata.desktop";`
-to make Strata the folder handler, and configure the udiskie unlock hook through
-`services.udiskie.settings`:
-
-```nix
-services.udiskie.settings = {
-  program_options = {
-    event_hook = [ (lib.getExe strata) "--udiskie-hook" "{event}" "{id_usage}" "{device_file}" "{id_uuid}" ];
-    password_prompt = false;
-  };
-  device_config = [ { is_luks = true; automount = false; } ];
-};
-```
-
-### Interactive installation
-
-The interactive installer detects the Linux architecture, glibc version, Arch
-Linux, and Omarchy 3 or 4. The recommended installation gives you the full
-experience: Strata with every integration your system supports, which means the
+The recommended setup installs every integration your system supports: the
 application launcher, folder handling and "Open file location", the system file
-chooser, SMB and image/RAW support on Arch, the file-manager shortcuts on Omarchy
-3 or 4 (a backup of the previous bindings is kept), and encrypted-volume unlock
-when `udiskie` is installed. Choose **Customize installation** to deselect any of
-them. Only options supported by your system are offered:
+chooser, SMB and image/RAW support, the file-manager shortcuts on Omarchy 3 or 4 (a
+backup of the previous bindings is kept), and encrypted-volume unlock when `udiskie`
+is installed. Choose **Customize installation** to deselect any of them; only options
+your system supports are offered. Use the arrow keys and Enter to choose, and Space to
+toggle custom options. The installer shows every privileged package operation before
+running it, and `--verbose` prints detailed output.
+
+For an unattended installation, pass `--non-interactive`, and decline individual
+integrations with `--without-*` flags:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/lgse/strata/main/install.sh | bash
+./install.sh --non-interactive --without-smb --without-file-chooser
 ```
 
-This installs the official release. To install this fork instead, see
-[Install this fork](#install-this-fork).
+Each `--with-*` or `--without-*` flag implies `--non-interactive`. A `--with-*` flag
+fails before installing anything when the system cannot provide that integration,
+whereas a default is skipped with a warning. `--with-omarchy-keybinds` is accepted
+only on Omarchy 3 or 4, and `--with-udiskie-unlock` only when `udiskie` is already on
+`PATH` on an Arch-based system. Folder association implies the desktop entry and "Open
+file location". `--without-file-chooser` keeps your current chooser and dismisses the
+one-time in-app offer. The installer never installs the `udiskie` package.
+Non-interactive package installation needs passwordless sudo or cached credentials.
+Run `./install.sh --help` for every option.
 
-Use the arrow keys and Enter to choose a setup; Space toggles custom options.
-Small or basic terminals use numbered choices instead. The original block-art logo
-uses its Tokyo Night pale-blue, blue, and violet brand colors; other colors follow
-your terminal palette. `NO_COLOR=1` disables colors. A continuous dithered progress
-bar shows actual transfer percentages, with a spinner when the total is unknown.
-Selected packages share one package-manager transaction, with its normal
-confirmation. Pass `--verbose` for detailed download and verification output;
-failures always show diagnostics.
-Integration results always remain visible, including service-restart notices.
-Detailed logs are retained for failures, warnings, and integration notices; package
-operations are logged without recording terminal password input.
+Phone backends are not installed. For iPhone, iPad or Android access, follow
+[Connecting phones](#connecting-phones) after installation.
 
-The installer shows every privileged package operation before asking to run it.
-Before extracting anything, it downloads the release's
-[signed update manifest](docs/signed-updates.md), verifies its Ed25519 signature
-with `openssl` against the release key pinned in the script (the same key the
-in-app updater trusts), and checks the archive's size and SHA-256 against the
-signed values. It needs no GitHub CLI or account, and it stops instead of falling
-back to a checksum when a release is unsigned or verification fails. The binary
-is installed per-user at `~/.local/bin/strata`.
+<a id="manual-installation"></a>
 
-Every release also publishes `install.sh` and `install.sh.sha256` as attested
-release assets. To run the installer that shipped with the latest release instead
-of the copy on `main`:
+### Build manually
 
-```bash
-curl -fsSLO https://github.com/lgse/strata/releases/latest/download/install.sh
-curl -fsSLO https://github.com/lgse/strata/releases/latest/download/install.sh.sha256
-sha256sum --check install.sh.sha256 && bash install.sh
-```
-
-With GitHub CLI, `gh attestation verify install.sh --repo lgse/strata` confirms
-the script was built by the release workflow.
-
-For an unattended Arch or Omarchy installation, pass `--non-interactive`. This
-installs the dependencies, the binary, and every integration the system supports
-without prompting. Decline individual integrations with `--without-*` flags:
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/lgse/strata/main/install.sh \
-  | bash -s -- --non-interactive \
-      --without-smb \
-      --without-file-chooser
-```
-
-Each `--with-*` or `--without-*` flag implies `--non-interactive`. A `--with-*`
-flag requires its integration and fails before installing anything when the
-system or the release cannot provide it, whereas a default is skipped with a
-warning. `--with-omarchy-keybinds` is accepted only on Omarchy 3 or 4, and
-`--with-udiskie-unlock` only when `udiskie` is already on `PATH` on an Arch-based
-system. Folder association implies the desktop entry and "Open file location", so
-`--without-desktop-entry` and `--without-file-manager` also drop it. File chooser
-replacement is separate from folder handling: `--without-file-chooser` keeps your
-current chooser and dismisses the one-time in-app offer.
-The installer never installs the `udiskie` package. Restore encrypted-volume
-unlock on Arch with `strata --uninstall-udiskie-unlock`, not Settings.
-
-Non-interactive package installation requires passwordless sudo or cached credentials. Run `./install.sh --help` for the full option list.
-
-Phone backends are not installed by the script. For optional iPhone/iPad or Android
-access, follow [Connecting phones](#connecting-phones) after installation.
-
-### AI-assisted installation
-
-Use this option to have a coding agent install and verify the latest release archive.
-
-Give this prompt to a coding agent with terminal access:
-
-```text
-Install the latest stable Strata release from https://github.com/lgse/strata safely.
-
-Before changing anything:
-1. Confirm this is a glibc-based Linux system with a graphical GTK4 environment.
-2. Detect whether the machine is x86_64 or aarch64 and select only the matching
-   *-unknown-linux-gnu archive from the canonical lgse/strata GitHub release.
-3. Show me the runtime packages you need and ask before using sudo or changing
-   my default file-manager association.
-
-Then:
-- Install the required GTK4, GtkSourceView 5, Poppler GLib, Fontconfig, Bubblewrap,
-  FFmpeg/GStreamer, and desktop-integration runtime dependencies using the system
-  package manager. Add gvfs-smb only if I want SMB support.
-- Ask whether I want phone access. On Arch/Omarchy, add gvfs-afc and usbmuxd for
-  iPhone/iPad app documents, gvfs-gphoto2 for camera/PTP photo access, or gvfs-mtp
-  for Android file transfers, only if requested. Other distributions need their
-  equivalent GVfs backends.
-- Download the archive, strata-update-manifest.json, and
-  strata-update-manifest.signatures.json from the latest GitHub release.
-- Verify the manifest's Ed25519 signature with `openssl pkeyutl -verify -rawin`
-  against a public key from data/update-keys.json in the repository, over the
-  bytes `strata-update-manifest-v1`, one NUL byte, and the exact manifest file.
-  Then check the archive's size and SHA-256 against the signed entry for this
-  architecture. Stop if any check fails; never install an unsigned or mismatched
-  archive, and do not fall back to the .sha256 file.
-- Extract it and install `strata` to ~/.local/bin/strata without overwriting an
-  unrelated file. Ensure ~/.local/bin is on PATH.
-- Ask whether I want a per-user desktop entry and inode/directory association;
-  if yes, install the archive's io.github.lgse.Strata.desktop and io.github.lgse.Strata.svg
-  under ~/.local/share, pointing Exec at the installed binary, then refresh the
-  desktop database and icon cache.
-- Separately ask whether Strata should handle "Open file location" requests. If
-  yes, verify no other per-user service provides org.freedesktop.FileManager1,
-  then install the archive's io.github.lgse.Strata.FileManager1.service under
-  ~/.local/share/dbus-1/services with Exec pointing at the installed binary.
-- Ask before editing udiskie config to use Strata for encrypted-volume unlock.
-  Do not install the udiskie package. Do not send Arch users to Settings for
-  this row; restore on Arch with `strata --uninstall-udiskie-unlock`.
-- Launch `strata`, report its installed version/source release, and verify the
-  desktop association if one was requested. Do not weaken the preview sandbox.
-```
-
-### Manual installation
-
-Install the release archive directly if you prefer to perform each step yourself.
-
-#### 1. Check the architecture and install dependencies
-
-```bash
-case "$(uname -m)" in
-  x86_64)  target=x86_64-unknown-linux-gnu ;;
-  aarch64) target=aarch64-unknown-linux-gnu ;;
-  *) echo "Strata has no prebuilt release for $(uname -m)" >&2; exit 1 ;;
-esac
-printf 'Use the %s release archive.\n' "$target"
-getconf GNU_LIBC_VERSION   # must report glibc 2.39 or newer
-```
+Install the build tools and libraries, and the runtime packages.
 
 On Arch Linux or Omarchy:
 
 ```bash
-sudo pacman -S --needed bubblewrap ffmpeg ffmpegthumbnailer fontconfig \
-  gstreamer gst-libav gst-plugins-base gst-plugins-good gtk4 gtksourceview5 gvfs poppler-glib
+sudo pacman -S --needed base-devel git pkgconf rust \
+  bubblewrap desktop-file-utils ffmpeg ffmpegthumbnailer fontconfig gstreamer gst-libav \
+  gst-plugins-base gst-plugins-good gtk4 gtksourceview5 gvfs poppler-glib xdg-utils
 # Optional SMB, AppImage icon, and broader camera RAW support:
 sudo pacman -S --needed gvfs-smb imagemagick libraw dcraw squashfs-tools
 ```
 
-On Fedora (prefer the [COPR package](#fedora), which installs these itself):
+On Fedora:
 
 ```bash
-sudo dnf install bubblewrap ffmpeg-free ffmpegthumbnailer fontconfig \
-  gstreamer1 gstreamer1-plugin-libav gstreamer1-plugins-base gstreamer1-plugins-good \
-  gtk4 gtksourceview5 gvfs poppler-glib
+sudo dnf install cargo rust gcc git pkgconf-pkg-config fontconfig-devel glib2-devel \
+  gstreamer1-devel gstreamer1-plugins-base-devel gtk4-devel gtksourceview5-devel \
+  poppler-glib-devel \
+  bubblewrap desktop-file-utils ffmpeg-free ffmpegthumbnailer fontconfig gstreamer1 \
+  gstreamer1-plugin-libav gstreamer1-plugins-base gstreamer1-plugins-good gtk4 \
+  gtksourceview5 gvfs hicolor-icon-theme poppler-glib xdg-utils
 # Optional SMB, AppImage icon, and broader camera RAW support:
-sudo dnf install gvfs-smb ImageMagick LibRaw dcraw squashfs-tools
+sudo dnf install gvfs-smb ImageMagick LibRaw-samples dcraw squashfs-tools
 ```
 
-GTK **4.12 or newer** and glibc **2.39 or newer** are required. Other glibc-based distributions may work when they provide equivalent runtime libraries, but their package names and binary compatibility vary. Systems with an older glibc must [build Strata from source](#development-and-documentation).
+`ffmpeg` from RPM Fusion can replace `ffmpeg-free` for more preview formats.
 
-Device discovery requires the GVfs UDisks2 volume monitor (`gvfs` on Arch and
-Fedora; `gvfs-daemons` on Debian/Ubuntu). Without that backend, removable drives
-may be absent from Devices. SMB support remains optional. Phones need additional
-backends; see [Connecting phones](#connecting-phones).
-
-If previews, thumbnails, network locations, or drives don't work after installation,
-open **Settings → Diagnostics** and select **Run**. It tests each of these features,
-names any missing package with an install command for your distribution that
-you can copy or run in your terminal, and
-**Copy report** copies the results for a bug report.
-
-#### 2. Download and verify
-
-From the [latest release](https://github.com/lgse/strata/releases/latest), download the `.tar.gz` matching `$target` together with `strata-update-manifest.json` and `strata-update-manifest.signatures.json` over HTTPS. The manifest is signed with the Ed25519 release key from [`data/update-keys.json`](data/update-keys.json), the same key the in-app updater trusts. Verify the signature, then compare the archive with its signed entry:
+Then build and install the binary:
 
 ```bash
-cd ~/Downloads
-archive="strata-<version>-${target}.tar.gz"
-key=$(curl -fsSL https://raw.githubusercontent.com/lgse/strata/main/data/update-keys.json | grep -o '[0-9a-f]\{64\}' | head -1)
-printf '302a300506032b6570032100%s' "$key" | tr a-f A-F | basenc --base16 -d > release-key.der
-{ printf 'strata-update-manifest-v1\0'; cat strata-update-manifest.json; } > signed-message
-grep -o '"signature":"[0-9a-f]*"' strata-update-manifest.signatures.json | head -1 | cut -d'"' -f4 | tr a-f A-F | basenc --base16 -d > signature
-openssl pkeyutl -verify -rawin -pubin -keyform DER -inkey release-key.der -sigfile signature -in signed-message
-grep -o "{\"name\":\"$archive\"[^}]*}" strata-update-manifest.json
-stat -c %s "$archive" && sha256sum "$archive"
-```
-
-The signature must verify, and the printed size and SHA-256 must equal the signed
-`size` and `sha256`. During a key rotation the signatures file lists one entry per
-key; pick the one whose `key_id` is the SHA-256 of your key's raw bytes. The
-`.sha256` files and GitHub build-provenance attestations are still published for
-packagers, and `gh attestation verify "$archive" --repo lgse/strata` remains an
-optional extra check, but neither replaces the signed manifest.
-
-Every verification you run must succeed. Extract the archive, install the binary,
-and confirm it starts:
-
-```bash
-tar -xzf "$archive"
-install -Dm755 "${archive%.tar.gz}/strata" "$HOME/.local/bin/strata"
-command -v strata
+git clone https://github.com/parasite6/strata.git
+cd strata
+cargo build --release --locked
+install -Dm755 target/release/strata ~/.local/bin/strata
 strata
 ```
 
-If `command -v` fails, add `$HOME/.local/bin` to your shell's `PATH`. Every archive contains `SOURCE_COMMIT`, identifying the exact source revision used by GitHub Actions.
+If `strata` is not found, add `~/.local/bin` to your shell's `PATH`. A manual build has
+no desktop entry; run `./install.sh` from the same checkout to add the integrations,
+or see [Desktop entry](#desktop-entry). See
+[Development and documentation](#development-and-documentation) for build options,
+such as building without RAR support or without the in-app updater.
 
-#### Debug a release crash
+Device discovery needs the GVfs UDisks2 volume monitor (`gvfs` on Arch and Fedora,
+`gvfs-daemons` on Debian and Ubuntu); without it, removable drives may be missing from
+Devices. If previews, thumbnails, network locations or drives don't work, open
+**Settings → Diagnostics** and select **Run**. It names any missing package with an
+install command for your distribution, and **Copy report** copies the results.
 
-Download the matching `strata-<version>-<target>.debug` asset from the same release and place it beside the installed `strata` binary, keeping its filename unchanged. Then run `coredumpctl debug strata`; GDB will load its Rust function names and source lines.
+### Nix and NixOS
 
-#### 3. Update or uninstall
+The repository's flake builds from source, so it can build this fork on `x86_64-linux`
+or `aarch64-linux`:
 
-In-app updates verify [signed release manifests](docs/signed-updates.md) inside Strata, without `gh`, a GitHub account, or a token. Releases published before signed manifests were introduced require manual installation; the updater never falls back to checksum-only verification.
+```bash
+nix run github:parasite6/strata
+nix profile add github:parasite6/strata
+```
 
-For a manual installation, use **Settings → Updates** for verified in-app updates, or repeat the download, verification, and `install` steps for a newer release. An in-app update also refreshes an already installed desktop entry and application icon from the new archive; it never creates desktop metadata that was not installed before. If the user opted into Strata's system file chooser, the update restarts the portal frontend so subsequent dialogs use the newly installed build. Package-managed installations are updated only by their system package manager. To remove a per-user installation, run `strata --uninstall-udiskie-unlock` before deleting the binary if you opted into encrypted-volume unlock, then:
+For NixOS or Home Manager, add `inputs.strata.url = "github:parasite6/strata";` and
+follow the official
+[Nix and NixOS instructions](https://github.com/lgse/strata#nix-and-nixos) for the
+package, the file chooser portal, the FileManager1 service and udiskie, which apply
+unchanged. Update the flake input and rebuild to upgrade.
+
+### Update
+
+From your checkout:
+
+```bash
+git pull
+./install.sh
+```
+
+For a manual build, run `git pull`, `cargo build --release --locked`, and the
+`install` command again. A one-step installation has no checkout to update; run the
+one-step command again.
+
+### Uninstall
+
+If you opted into encrypted-volume unlock, run `strata --uninstall-udiskie-unlock`
+first. Then remove the per-user installation:
 
 ```bash
 rm -f ~/.local/bin/strata \
@@ -477,7 +279,8 @@ update-desktop-database ~/.local/share/applications 2>/dev/null || true
 gtk-update-icon-cache -qtf ~/.local/share/icons/hicolor 2>/dev/null || true
 ```
 
-User preferences and custom themes remain under the XDG configuration directories so an uninstall does not destroy personal settings.
+Preferences and custom themes stay under your XDG configuration directories, so
+uninstalling keeps your settings.
 
 ## Usage and desktop integration
 
@@ -500,14 +303,15 @@ In narrow or highly scaled windows, the file view takes priority: the preview sh
 
 ### Desktop entry
 
-Every release archive ships `io.github.lgse.Strata.desktop` and the Strata application icon `io.github.lgse.Strata.svg`. Install both to give Strata a per-user launcher with its own icon in launchers, docks, task switchers, and window overviews, and optionally make Strata the default directory handler:
+The installer adds a per-user desktop entry and application icon unless you deselect
+them. To add them yourself after a [manual build](#build-manually), run from your
+checkout:
 
 ```bash
-cd ~/Downloads/"${archive%.tar.gz}"
-install -Dm644 io.github.lgse.Strata.svg \
+install -Dm644 data/icons/scalable/apps/io.github.lgse.Strata.svg \
   ~/.local/share/icons/hicolor/scalable/apps/io.github.lgse.Strata.svg
 install -d ~/.local/share/applications
-sed "s|^Exec=strata |Exec=$HOME/.local/bin/strata |" io.github.lgse.Strata.desktop \
+sed "s|^Exec=strata |Exec=$HOME/.local/bin/strata |" data/io.github.lgse.Strata.desktop \
   > ~/.local/share/applications/io.github.lgse.Strata.desktop
 update-desktop-database ~/.local/share/applications
 gtk-update-icon-cache -qtf ~/.local/share/icons/hicolor 2>/dev/null || true
@@ -515,38 +319,34 @@ xdg-mime default io.github.lgse.Strata.desktop inode/directory
 xdg-mime query default inode/directory
 ```
 
-The final command should print `io.github.lgse.Strata.desktop`. The desktop entry's filename matches the `io.github.lgse.Strata` application ID that Strata's windows report, so desktop shells match a running window to this entry and draw its `Icon` value. Log out and back in if a shell caches launcher icons.
+The final command should print `io.github.lgse.Strata.desktop`, which also makes Strata
+the default folder handler. The entry's filename matches the `io.github.lgse.Strata`
+application ID that Strata's windows report, so desktop shells match a running window
+to it and show its icon. This fork keeps the official application ID. Log out and back
+in if a shell caches launcher icons.
 
-When building from source, `mise run install-local` installs the binary, icon, and desktop entry in the same locations, and `mise run uninstall-local` removes them.
+With [mise](https://mise.jdx.dev), `mise run install-local` builds and installs the
+binary, icon and desktop entry in the same locations, and `mise run uninstall-local`
+removes them.
 
 ### "Open file location" from other applications
 
-Browsers and GTK/GNOME applications reveal a file by calling the `org.freedesktop.FileManager1` D-Bus interface instead of consulting the `inode/directory` association. The interactive installer offers this separately; for unattended installation, pass `--with-file-manager`. Folder association enables it automatically.
+Browsers and GTK/GNOME applications reveal a file by calling the
+`org.freedesktop.FileManager1` D-Bus interface instead of consulting the
+`inode/directory` association. The installer offers this separately; for unattended
+installation, pass `--with-file-manager`. Folder association enables it automatically.
 
-For a source installation, enable Strata as the per-user activatable provider explicitly:
-
-```bash
-mise run install-file-manager
-```
-
-For an AUR or COPR package, copy its inactive service template into your per-user service directory:
+To enable it yourself, run `mise run install-file-manager` from your checkout, or
+install the service file directly:
 
 ```bash
-install -Dm644 /usr/share/strata/io.github.lgse.Strata.FileManager1.service \
-  ~/.local/share/dbus-1/services/io.github.lgse.Strata.FileManager1.service
-```
-
-For a release archive installation, install the included service manually instead:
-
-```bash
-cd ~/Downloads/"${archive%.tar.gz}"
 install -d ~/.local/share/dbus-1/services
 sed "s|^Exec=/usr/bin/strata |Exec=$HOME/.local/bin/strata |" \
-  io.github.lgse.Strata.FileManager1.service \
+  data/io.github.lgse.Strata.FileManager1.service \
   > ~/.local/share/dbus-1/services/io.github.lgse.Strata.FileManager1.service
 ```
 
-A per-user provider takes precedence over system providers shipped by other file managers. Before enabling Strata manually, remove any other per-user service whose `Name` is `org.freedesktop.FileManager1`; two providers for the same name in one service directory are chosen arbitrarily. If another file manager already owns the bus name, exit it before testing. Use `mise run uninstall-file-manager` for a source installation, or remove the per-user service file, to disable Strata again.
+A per-user provider takes precedence over system providers shipped by other file managers. Before enabling Strata manually, remove any other per-user service whose `Name` is `org.freedesktop.FileManager1`; two providers for the same name in one service directory are chosen arbitrarily. If another file manager already owns the bus name, exit it before testing. Use `mise run uninstall-file-manager`, or remove the per-user service file, to disable Strata again.
 
 Strata then answers `ShowFolders`, `ShowItems`, and `ShowItemProperties`, opening the directory that holds the named items with those items selected:
 
@@ -911,6 +711,12 @@ To go beyond the color tokens, an optional `~/.config/strata/style.css` is loade
 
 ## Release channels
 
+> [!NOTE]
+> Release channels and **Install a specific release** deliver the **official** Strata
+> releases from lgse/strata. Installing one replaces this fork's build. This fork has
+> no releases or channels of its own; update it by rebuilding, as described in
+> [Update](#update).
+
 Strata defaults to the **Stable** channel: only final tagged releases are ever offered, and a Stable install never receives, sees, or is notified about a prerelease.
 
 Strata checks for updates automatically by default: each time it starts, once its first window opens, and again when a window or **Settings → Updates** opens if no check has completed in the last 24 hours. Turning **Check for updates automatically** back on, or changing the channel, also runs a check. The check asks the update source for your installation: GitHub for release binaries and source builds, the AUR for AUR packages, the Omarchy package repository for Omarchy packages, or the local pacman sync database for other pacman packages. When a newer version is found, Strata also fetches that release's details from GitHub. Turning the switch off stops the automatic checks, discards the result of a check still running, hides any update notice already shown, and locks the channel. **Check now** still checks on demand, and the Updates page's release-notes card asks GitHub for the current version's notes when they are not already cached. Strata never downloads or installs an update without your confirmation.
@@ -945,15 +751,15 @@ Plain-text and source previews are different: they stay in process because they 
 
 | Area | Details |
 | --- | --- |
-| Platform | 64-bit Linux with glibc 2.39+; designed for Omarchy and Wayland. GTK may use another backend supplied by the host, but Wayland is the primary display stack. |
-| Release architectures | `x86_64-unknown-linux-gnu` and `aarch64-unknown-linux-gnu` |
+| Platform | 64-bit glibc-based Linux; designed for Omarchy and Wayland. GTK may use another backend supplied by the host, but Wayland is the primary display stack. Official release binaries need glibc 2.39+; this fork is built on your system. |
+| Architectures | `x86_64` and `aarch64`, built from source |
 | UI and runtime | Rust 2024, GTK 4.12+, GIO/GLib, Cairo, GtkSourceView 5, Poppler GLib, GDK Pixbuf, GStreamer, and Fontconfig |
 | Filesystems | Native Linux paths (including non-UTF-8 names) and GIO/GVfs locations; remote protocol availability depends on installed GVfs backends |
 | Preview boundary | Bubblewrap is mandatory for native parser-backed previews; helpers have no network and fail closed. Plain text is read in process with a 1 MiB cap. |
 | Optional preview tools | `ffmpegthumbnailer`/`ffmpeg` for video; ImageMagick, classic `dcraw`, and LibRaw `simple_dcraw` expand camera RAW support; `squashfs-tools` (`unsquashfs`) extracts icons embedded in AppImages |
 | Hardware acceleration | Media-only VA-API or Vulkan decoding with software fallback; GPU and codec support depend on host drivers |
 | Scale targets | Virtualized browser models and bounded asynchronous updates are tested with deterministic directories up to 100,000 entries |
-| Packaging | Dynamically linked release archive with a signed update manifest, SHA-256 digest, GitHub build-provenance attestation, and `SOURCE_COMMIT` |
+| Packaging | This fork: built from source with `install.sh`, Cargo or Nix; no release archives. Official releases: dynamically linked archive with a signed update manifest, SHA-256 digest, GitHub build-provenance attestation, and `SOURCE_COMMIT` |
 
 ## Development and documentation
 
@@ -976,7 +782,8 @@ its version with a `+debug` suffix in `strata --version` and in Settings → Abo
 ### Builds without RAR support
 
 The default `rar` Cargo feature embeds RARLAB's non-free UnRAR implementation.
-Official releases and AUR builds retain RAR extraction and CBR cover previews.
+Builds of this fork, official releases and AUR builds retain RAR extraction and CBR
+cover previews.
 Packagers who cannot distribute UnRAR can exclude it with:
 
 ```bash
@@ -1003,7 +810,7 @@ turns off the runtime installers for the file chooser portal, the FileManager1
 service, the Omarchy shortcuts, and the udiskie unlock hook so the package can
 ship those files itself. See [distribution packaging](docs/packaging.md#building-with-package-provided-integrations).
 
-Start with [CONTRIBUTING.md](CONTRIBUTING.md) before opening a pull request. Deeper references:
+To contribute to Strata itself, read [CONTRIBUTING.md](CONTRIBUTING.md) and open pull requests on the [official repository](https://github.com/lgse/strata). This fork's changes are made directly on its `main`. Deeper references:
 
 - [Keyboard navigation](docs/keyboard-navigation.md)
 - [Keymap](docs/keymap.md)
