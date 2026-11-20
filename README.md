@@ -2,12 +2,12 @@
 
 <img src="docs/assets/logos/strata-tokyo-night.svg" alt="Strata logo" width="160">
 
-# Strata
+# Strata (unofficial fork)
 
 **Navigate every layer.** A fast, keyboard-first file manager for modern Linux desktops.
 
-[![CI](https://github.com/lgse/strata/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/lgse/strata/actions/workflows/ci.yml)
-[![Latest release](https://img.shields.io/github/v/release/lgse/strata?display_name=tag&sort=semver)](https://github.com/lgse/strata/releases/latest)
+[![Fork CI](https://github.com/parasite6/strata/actions/workflows/fork-ci.yml/badge.svg?branch=main)](https://github.com/parasite6/strata/actions/workflows/fork-ci.yml)
+[![Upstream release](https://img.shields.io/github/v/release/lgse/strata?display_name=tag&sort=semver&label=upstream%20release)](https://github.com/lgse/strata/releases/latest)
 [![License: MIT](https://img.shields.io/github/license/lgse/strata)](LICENSE)
 [![Linux](https://img.shields.io/badge/platform-Linux-FCC624?logo=linux&logoColor=black)](#technical-specifications)
 
@@ -20,12 +20,22 @@
 
 </div>
 
+> [!IMPORTANT]
+> **This is not the official Strata repository.** It is an unofficial fork of
+> [lgse/strata](https://github.com/lgse/strata), maintained independently by
+> [parasite6](https://github.com/parasite6). It is not affiliated with or endorsed by
+> LGSE Ltd. or the Strata maintainers. For the official project, releases and support,
+> go to **[github.com/lgse/strata](https://github.com/lgse/strata)**. Please don't
+> report problems with this fork to the official project.
+
 Strata combines spatial Miller-column navigation with familiar Icons and List views, instant fuzzy filename search, rich previews, and native Linux desktop integration. It is designed for Omarchy and works on compatible GTK4 Linux environments.
 
 ## Contents
 
+- [About this fork](#about-this-fork)
 - [Features](#features)
 - [Installation](#installation)
+  - [Install this fork](#install-this-fork)
   - [Fedora](#fedora)
   - [Nix and NixOS](#nix-and-nixos)
   - [Interactive installation](#interactive-installation)
@@ -45,8 +55,44 @@ Strata combines spatial Miller-column navigation with familiar Icons and List vi
 - [Under the hood](#under-the-hood)
 - [Technical specifications](#technical-specifications)
 - [Development and documentation](#development-and-documentation)
-- [Contributors](#contributors)
+- [Credits](#credits)
 - [License](#license)
+
+## About this fork
+
+This repository is a branch of the official Strata project at
+[github.com/lgse/strata](https://github.com/lgse/strata). Almost all of the code,
+design and documentation here is the work of the upstream authors; see
+[Credits](#credits).
+
+- **Kept in sync with upstream.** A scheduled job merges upstream's `main` into this
+  fork every day, so upstream fixes and features arrive here too.
+- **No official releases.** This fork publishes no binaries or signed releases. Install
+  it by building from source, as described in [Install this fork](#install-this-fork).
+  Release downloads, the signed update manifest and the in-app updater all refer to
+  the official project.
+- **Changes are not sent upstream.** Fork changes are made directly on this
+  repository's `main` and are not proposed to the official project.
+
+What this fork adds on top of upstream:
+
+- **Compression options:** a compression level from Store to Ultra for ZIP, 7Z and
+  TAR.GZ, and an **Encrypt file names** choice for password-protected 7Z archives.
+- **SHA-256 in Properties:** a file's checksum, calculated in the background and
+  selectable for copying.
+- **Folder previews in Icons view:** folders show thumbnails of the pictures and
+  videos inside them, with a **Folder previews** setting; network shares are skipped.
+- **Icon themes:** file icons from installed icon themes or your own images, following
+  desktop theme changes live.
+- **Media players:** a per-stream loop toggle.
+- **File chooser:** a single click selects instead of previewing, and Save dialogs open
+  with nothing selected.
+- **Text preview:** a wider, classic editor scrollbar.
+- **Source installs:** `install.sh` builds this fork from a checkout, with Fedora
+  support. See [Install this fork](#install-this-fork).
+- **Fixes:** stale glyph pixels left after text changes, path bar and pane header
+  repaints, filter results that lost their preview, the partial-search notice covering
+  results, and faster listing of large folders.
 
 ## Features
 
@@ -68,6 +114,41 @@ Strata combines spatial Miller-column navigation with familiar Icons and List vi
 - **Encrypted-volume unlock:** opt in through the installer, **Settings → General → Desktop integration** on Omarchy, or `strata --install-udiskie-unlock`; restore with `strata --uninstall-udiskie-unlock` (Settings **Restore default** on Omarchy only).
 
 ## Installation
+
+### Install this fork
+
+This fork has no prebuilt releases, so it is built from source on your machine. The
+installer installs the build and runtime packages with pacman (Arch, Omarchy) or dnf
+(Fedora), builds with Cargo at low priority on half your CPU cores, and installs
+`~/.local/bin/strata` with the same integrations as the official installer. You need
+[Rust](https://rustup.rs) (`cargo`) and `git`.
+
+From a checkout:
+
+```bash
+git clone https://github.com/parasite6/strata.git
+cd strata
+./install.sh
+```
+
+Or in one step, which clones this fork into a temporary folder:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/parasite6/strata/main/install.sh | bash -s -- --from-source
+```
+
+To update, run `git pull` in your checkout and `./install.sh` again. Set
+`STRATA_BUILD_JOBS` to change how many CPU cores the build uses.
+
+> [!WARNING]
+> Running the installer **without** `--from-source` outside a checkout, using
+> `--from-release`, or installing an update from **Settings → Updates** installs the
+> **official** release from lgse/strata and replaces this fork's build. To stay on the
+> fork, turn off automatic update checks in **Settings → Updates** and update by
+> rebuilding.
+
+The rest of this section is the official project's installation guide. It installs
+the **official** Strata release, not this fork.
 
 Arch Linux and Omarchy are the primary supported environments. Current binaries require **glibc 2.39 or newer** and the runtime libraries listed below.
 
@@ -180,13 +261,8 @@ them. Only options supported by your system are offered:
 curl -fsSL https://raw.githubusercontent.com/lgse/strata/main/install.sh | bash
 ```
 
-To install this fork's code instead, run `./install.sh` from a checkout: it
-builds that checkout with Cargo (thin LTO, low priority, half the CPU cores by
-default; set `STRATA_BUILD_JOBS` to change that) and installs the result with the
-same integrations. On Arch and Fedora it first installs the build and
-runtime packages with pacman or dnf. `--from-source` does the same from a piped
-install by cloning `parasite6/strata`, and `--from-release` installs upstream's
-signed release even from a checkout.
+This installs the official release. To install this fork instead, see
+[Install this fork](#install-this-fork).
 
 Use the arrow keys and Enter to choose a setup; Space toggles custom options.
 Small or basic terminals use numbered choices instead. The original block-art logo
@@ -945,14 +1021,28 @@ Start with [CONTRIBUTING.md](CONTRIBUTING.md) before opening a pull request. Dee
 - [Unsafe code policy](docs/unsafe-code.md)
 - [Releasing](docs/releasing.md)
 
-## Contributors
+## Credits
+
+Strata is created and maintained by **LGSE Ltd.** and the
+[Strata contributors](https://github.com/lgse/strata/graphs/contributors) at
+[github.com/lgse/strata](https://github.com/lgse/strata). This fork exists only
+because of their work: the file manager, its design, its documentation and nearly all
+of its code are theirs. To support the project, use and star the
+[official repository](https://github.com/lgse/strata).
 
 <a href="https://github.com/lgse/strata/graphs/contributors">
   <img src="https://contrib.rocks/image?repo=lgse/strata" alt="Avatars of Strata contributors linked to the contributors graph">
 </a>
 
-This image is generated from GitHub contribution data so new contributors appear without a manual README update. Thank you to everyone who reports issues, improves the documentation, tests releases, and contributes code.
+Fork changes are by [parasite6](https://github.com/parasite6).
 
 ## License
 
-Strata is free software licensed under the **[MIT License](LICENSE)**. Bundled fonts, icons, and other third-party components retain their own notices in [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md).
+Strata is free software licensed under the **[MIT License](LICENSE)**, copyright
+LGSE Ltd. This fork keeps that license and copyright notice unchanged, and its own
+changes are released under the same license. Bundled fonts, icons, and other
+third-party components retain their own notices in
+[THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md).
+
+"Strata" and its logo belong to their respective owners. Their use here identifies the
+project this fork is based on and does not imply endorsement.

@@ -35,6 +35,8 @@ jobs:
           set -euo pipefail
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          # .gitattributes marks README.md merge=ours; this defines that driver.
+          git config merge.ours.driver true
           # Fetched by URL with no remote, so this job can never push to lgse/strata.
           git fetch --no-tags "${UPSTREAM_REPO}" "+refs/heads/main:refs/remotes/upstream/main"
 

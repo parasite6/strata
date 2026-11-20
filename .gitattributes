@@ -1,2 +1,5 @@
 # PDF xref entries are fixed-width and end with a space before LF.
 tests/fixtures/documents/*.pdf whitespace=-blank-at-eol
+
+# The fork keeps its own README; the daily upstream merge never takes upstream's.
+README.md merge=ours
