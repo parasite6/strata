@@ -257,6 +257,41 @@ pub(super) fn typed_entry(name: &str, kind: crate::model::EntryKind) -> FileEntr
 }
 
 #[test]
+fn second_press_after_a_preview_click_pairs_only_on_the_same_nearby_file_in_time() {
+    use clicks::{DoubleClickWindow, PreviewPress};
+    use std::time::{Duration, Instant};
+    let start = Instant::now();
+    let note = Location::uri("file:///note.txt");
+    let other = Location::uri("file:///other.txt");
+    let first = PreviewPress {
+        at: start,
+        point: (100.0, 100.0),
+        location: note.clone(),
+    };
+    let window = DoubleClickWindow {
+        interval: Duration::from_millis(400),
+        distance: 5.0,
+    };
+    for (after_ms, point, location, expected) in [
+        (150, (102.0, 98.0), &note, true),
+        (450, (100.0, 100.0), &note, false),
+        (150, (120.0, 100.0), &note, false),
+        (150, (100.0, 100.0), &other, false),
+    ] {
+        assert_eq!(
+            first.pairs_with(
+                start + Duration::from_millis(after_ms),
+                point,
+                location,
+                window
+            ),
+            expected,
+            "after={after_ms}ms point={point:?} location={location:?}"
+        );
+    }
+}
+
+#[test]
 fn filtered_file_clicks_never_open_chooser_or_trashed_files() {
     use ClickCount::{One, Two};
     use FilteredFileClick::{Ignore, Open, Preview};

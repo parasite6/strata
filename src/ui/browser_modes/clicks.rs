@@ -6,6 +6,7 @@
 use std::{
     cell::{Cell, RefCell},
     rc::{Rc, Weak},
+    time::{Duration, Instant},
 };
 
 use gtk::{gdk, gio, glib, prelude::*};
@@ -48,6 +49,80 @@ fn press_modifiers(modifiers: gdk::ModifierType) -> (bool, bool) {
         modifiers.contains(gdk::ModifierType::CONTROL_MASK),
         modifiers.contains(gdk::ModifierType::SHIFT_MASK),
     )
+}
+
+/// A plain click that only previewed a file. Opening the preview can rebuild the
+/// item under the pointer, so GTK counts the next press as a fresh single click.
+pub(super) struct PreviewPress {
+    pub(super) at: Instant,
+    /// Surface coordinates, which stay put when the item widget is replaced.
+    pub(super) point: (f64, f64),
+    pub(super) location: Location,
+}
+
+/// How close in time and space a second press must be to complete a double-click.
+#[derive(Clone, Copy)]
+pub(super) struct DoubleClickWindow {
+    pub(super) interval: Duration,
+    pub(super) distance: f64,
+}
+
+impl PreviewPress {
+    pub(super) fn pairs_with(
+        &self,
+        now: Instant,
+        point: (f64, f64),
+        location: &Location,
+        window: DoubleClickWindow,
+    ) -> bool {
+        now.saturating_duration_since(self.at) < window.interval
+            && (point.0 - self.point.0).abs() <= window.distance
+            && (point.1 - self.point.1).abs() <= window.distance
+            && self.location == *location
+    }
+}
+
+thread_local! {
+    static PREVIEW_PRESS: RefCell<Option<PreviewPress>> = const { RefCell::new(None) };
+}
+
+fn surface_point(gesture: &gtk::GestureClick) -> Option<(f64, f64)> {
+    gesture.current_event().and_then(|event| event.position())
+}
+
+fn double_click_window(gesture: &gtk::GestureClick) -> Option<DoubleClickWindow> {
+    let settings = gesture.widget()?.settings();
+    Some(DoubleClickWindow {
+        interval: Duration::from_millis(settings.gtk_double_click_time().max(0) as u64),
+        distance: f64::from(settings.gtk_double_click_distance()),
+    })
+}
+
+/// Counts a single press that follows a preview click on the same file as a double-click.
+fn effective_press_count(
+    gesture: &gtk::GestureClick,
+    press_count: i32,
+    location: &Location,
+) -> i32 {
+    let Some(first) = PREVIEW_PRESS.with_borrow_mut(Option::take) else {
+        return press_count;
+    };
+    let completes = press_count == 1
+        && surface_point(gesture)
+            .zip(double_click_window(gesture))
+            .is_some_and(|(point, window)| {
+                first.pairs_with(Instant::now(), point, location, window)
+            });
+    if completes { 2 } else { press_count }
+}
+
+fn remember_preview_press(gesture: &gtk::GestureClick, location: &Location) {
+    let press = surface_point(gesture).map(|point| PreviewPress {
+        at: Instant::now(),
+        point,
+        location: location.clone(),
+    });
+    PREVIEW_PRESS.with_borrow_mut(|stored| *stored = press);
 }
 
 /// The view position of a still-shown item.
@@ -96,6 +171,7 @@ impl PreviewClick {
             let Some(clicked) = self.clicked_entry(&clicked_item) else {
                 return;
             };
+            let press_count = effective_press_count(gesture, press_count, &clicked.entry.location);
             let release = Release {
                 gesture,
                 press_count,
@@ -147,6 +223,7 @@ impl PreviewClick {
         } else if self.starts_slow_rename(release, clicked) {
             self.schedule_rename(release, rename_label, *position);
         } else if self.previews_on_click(release.press_count, entry) {
+            remember_preview_press(release.gesture, &entry.location);
             browser.preview(self.depth, *position);
         }
     }
