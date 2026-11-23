@@ -251,8 +251,9 @@ fn main() -> gtk::glib::ExitCode {
         LaunchMode::Portal => {
             let service_debug =
                 service_debug_environment(&arguments, std::env::var_os("GDK_DEBUG").as_deref());
-            if has_desktop_theme_override() || service_debug.is_some() {
-                return restart_for_gtk_environment(&arguments, false, false, service_debug);
+            let full_redraw = std::env::var_os("GSK_DEBUG").is_none();
+            if full_redraw || has_desktop_theme_override() || service_debug.is_some() {
+                return restart_for_gtk_environment(&arguments, false, full_redraw, service_debug);
             }
             restart_with_local_vfs_if_gvfs_is_unresponsive();
             let _volumes = gio::VolumeMonitor::get();

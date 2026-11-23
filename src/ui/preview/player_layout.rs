@@ -146,9 +146,11 @@ mod imp {
             let fixed = parts.fixed_height(content_width.max(panel_min));
             let free = height - 2 * PADDING - fixed - GAP;
             let margin = self.margin.get();
+            let frame_room = free - 2 * margin;
             let (frame_width, frame_height) =
-                self.frame_size(content_width - 2 * margin, free - 2 * margin);
-            let (outer_width, outer_height) = if frame_height >= FRAME_MIN {
+                self.frame_size(content_width - 2 * margin, frame_room);
+            // Gate on the room, not the fitted height, so very wide video still shows.
+            let (outer_width, outer_height) = if frame_room >= FRAME_MIN && frame_height > 0 {
                 (frame_width + 2 * margin, frame_height + 2 * margin)
             } else {
                 (0, 0)
