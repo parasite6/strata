@@ -5380,11 +5380,6 @@ textview > popover.menu button.model:focus-visible,
   color: @strata_text;
 }
 
-.file-list row:hover .file-row.active-path {
-  background: alpha(@strata_accent, 0.16);
-  color: @strata_text;
-}
-
 .file-list row:hover .file-row.active-path.active-parent {
   background: alpha(@strata_accent, 0.35);
   color: @strata_text;
@@ -5577,7 +5572,7 @@ textview > popover.menu button.model:focus-visible,
 }
 
 .file-list .file-row.active-path {
-  background: alpha(@strata_accent, 0.08);
+  background: alpha(@strata_accent, 0.24);
   color: @strata_text;
 }
 
@@ -5588,6 +5583,12 @@ textview > popover.menu button.model:focus-visible,
 
 .file-list row:selected .file-row.active-path {
   background: transparent;
+}
+
+/* Supplement the inactive selection fill without stacking on top of pointer hover. */
+.directory-column:not(:focus-within) .file-list:not(.context-selection) row:selected:not(:hover) .file-row.active-path:not(.active-parent),
+.keyboard-navigation .directory-column:not(:focus-within) .file-list:not(.context-selection) row:selected .file-row.active-path:not(.active-parent) {
+  background: alpha(@strata_accent, 0.17);
 }
 
 .file-list row:selected .file-row.active-path.active-parent {

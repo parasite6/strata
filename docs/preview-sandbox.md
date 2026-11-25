@@ -113,7 +113,10 @@ isolation, resource limits, or the other narrow optional runtime mounts.
 
 - GDK Pixbuf/camera RAW, Poppler PDF, ImageMagick, and dcraw fallbacks normalize
   images to dimension- and size-bounded PNG images. WebP is decoded first by the
-  built-in decoder, so it needs no system pixbuf loader or ImageMagick.
+  built-in decoder, so it needs no system pixbuf loader or ImageMagick. A local
+  WebP whose header declares an animation plays in the media sandbox instead, when
+  the runtime FFmpeg lists the `webp_anim` decoder (FFmpeg 9.0 or newer, asked once
+  per process); with an older FFmpeg it keeps the still first-frame preview.
 - `ffmpegthumbnailer` (or the software FFmpeg fallback) produces bounded media thumbnails. Browser thumbnails and
   media details share the bounded, reusable sandbox supervisors described below.
   Duplicate requests share work, obsolete targets detach, and thumbnail failures
@@ -664,6 +667,14 @@ with seeks mapped to their animation phase to avoid restarting a process every
 cycle; this does not truncate the animation. Longer GIFs play their complete
 animation before looping.
 
+Animated WebP follows the same rules, with two differences because FFmpeg's
+`webp_anim` demuxer reports no duration and cannot seek. The period is the sum of
+the container's frame durations, read from the ANMF chunk headers without decoding.
+A short animation loops in the filter graph (`loop`, ahead of the 30-fps conversion,
+holding at most 256 MiB of decoded source frames and 32,767 frames); one beyond that
+budget plays once. Every offset is reached by decoding from the start and trimming
+rather than `-ss`, and decoding stays in software.
+
 Files without a reported duration play until decoded EOF. Their timeline remains
 unknown and seeking is disabled until the actual end is established; pause/idle
 resume still retains the playback position. The wire's representable terminal
@@ -978,10 +989,11 @@ Image/PDF parsing has a 512-MiB input cap, 2-GiB address-space cap, 512-MiB file
 cap, 32-MiB parent output cap, 12-second wall limit and 10-second CPU limit.
 Media has no input-file size cap, playback-duration policy cap, or cumulative CPU
 limit; per-record sizes, queue limits, and progress deadlines bound active work. Each software FFmpeg process has a 2-GiB
-address-space limit; all decoding processes disable core dumps and cap files and
-individual media allocations at 512 MiB and source frames at 50 million pixels.
-Accelerated decoders retain the existing exemption from the address-space limit
-because drivers reserve large virtual ranges; this is not a hardware RSS cap.
+address-space limit and a 512-MiB file limit; all decoding processes disable core
+dumps and cap individual media allocations at 512 MiB and source frames at 50
+million pixels. Accelerated decoders are exempt from the address-space and file
+limits because drivers reserve large virtual ranges and sparse memfds; this is
+not a hardware RSS cap.
 
 Automatic tries VA-API, then Vulkan, then software. Explicit VA-API/Vulkan falls
 directly back to software when its hardware attempts fail before output begins.

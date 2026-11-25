@@ -32,10 +32,9 @@ fn assert_every_backend_decodes_within_bounds(devices: &[PathBuf], ordinary: &In
     for backend in backends(devices, MediaPreviewBackend::Automatic) {
         let args = command_args(Path::new("/input"), ordinary, &backend, Track::Video).join(" ");
         assert_eq!(present(&args, &ENCODERS), NO_TERMS);
-        assert_eq!(
-            args.contains("--as=2147483648"),
-            backend == Backend::Software
-        );
+        assert!(args.starts_with("--core=0"), "{args}");
+        assert_eq!(args.contains("--as="), backend == Backend::Software);
+        assert_eq!(args.contains("--fsize="), backend == Backend::Software);
         assert_eq!(missing(&args, &BOUNDS), NO_TERMS);
     }
 }
@@ -49,6 +48,11 @@ fn assert_decoder_command_is_limited() {
         .join(" ");
     assert!(args.starts_with("--core=0 --fsize=536870912 --as=2147483648"));
     assert_eq!(missing(&args, &[BOUNDS[0], BOUNDS[2]]), NO_TERMS);
+    assert_eq!(
+        present(&args, &["-thread_queue_size"]),
+        NO_TERMS,
+        "FFmpeg 9.1 rejects -thread_queue_size ahead of an input"
+    );
 }
 
 fn flag_positions(args: &[String], flags: &[&str]) -> Vec<usize> {
@@ -229,4 +233,71 @@ fn metadata_and_size_parsing_fail_closed_on_bad_sources_and_protocol_values() {
     assert_unknown_durations_resume_and_stay_contained(size);
     assert_raw_streams_seek_on_the_output(size);
     assert!(probe(Path::new("/nonexistent-strata-media"), size, 0).is_err());
+}
+
+const WEBP_ANIM: &[u8] = br#"{"streams":[{"index":0,"codec_type":"video","width":64,"height":48}],"format":{"format_name":"webp_anim"}}"#;
+
+const SMALL_ANIMATION: WebpAnimation = WebpAnimation {
+    canvas_width: 64,
+    canvas_height: 48,
+    frames: 10,
+    duration_us: 1_000_000,
+};
+
+#[test]
+fn animated_webps_loop_only_within_the_frame_budget_and_never_seek_the_source() {
+    let oversized = WebpAnimation {
+        canvas_width: 4096,
+        canvas_height: 4096,
+        ..SMALL_ANIMATION
+    };
+    let wrapping = WebpAnimation {
+        canvas_width: 1 << 24,
+        canvas_height: 1 << 24,
+        frames: 1 << 14,
+        ..SMALL_ANIMATION
+    };
+    let cases = [
+        (
+            "fits the budget",
+            Some(SMALL_ANIMATION),
+            Some(10),
+            30_000_000,
+        ),
+        ("beyond the budget", Some(oversized), None, 1_000_000),
+        (
+            "byte count wraps to zero in 64 bits",
+            Some(wrapping),
+            None,
+            1_000_000,
+        ),
+        ("unreadable timing", None, None, media::MAX_DURATION_US),
+    ];
+    for (name, animation, loop_frames, duration_us) in cases {
+        let request = ProbeRequest {
+            size: MediaPreviewSize::new(520, 800),
+            start_tick: 15,
+            mode: ProbeMode::Playback,
+        };
+        let input =
+            metadata_with(WEBP_ANIM, request, || animation).expect("animated WebP metadata");
+        assert_eq!(
+            (input.loop_frames, input.header.duration_us),
+            (loop_frames, duration_us),
+            "{name}"
+        );
+        let args = software_args(&input, Track::Video);
+        assert_omits_seek(&args);
+        assert!(
+            !args.iter().any(|arg| arg == "-stream_loop"),
+            "{name}: {args:?}"
+        );
+        let filter = &args[args.iter().position(|arg| arg == "-vf").expect("filter") + 1];
+        assert!(filter.contains("trim=start=0.500000"), "{name}: {filter}");
+        assert_eq!(
+            filter.starts_with("loop="),
+            loop_frames.is_some(),
+            "{name}: {filter}"
+        );
+    }
 }
