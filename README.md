@@ -110,8 +110,6 @@ upstream and is in both.
   current file. It starts off and is not saved.
 - **Classic text preview scrollbar:** text and source previews use a wider, always
   visible scrollbar instead of the thin overlay one.
-- **Pasted terminal paths:** the address bar accepts a path copied from a terminal,
-  with escaped spaces (`God\ of\ War`) or surrounding quotes.
 
 #### File chooser
 
